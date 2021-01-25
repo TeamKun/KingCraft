@@ -1,0 +1,12 @@
+name: King
+version: ${project.version}
+main: com.bun133.king.King
+api-version: 1.15
+authors: [ Bun133 ]
+website: https://twitter.com/bun133_
+commands:
+  king:
+    description: This is main command of king Game
+    usage: /<command> <s/start/e/end>
+    permission: op
+    permission-message: You don't have enough permission!
