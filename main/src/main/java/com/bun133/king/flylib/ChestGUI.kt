@@ -33,6 +33,7 @@ class ChestGUI(var p: Player, var col: NaturalNumber, name: String) {
     }
 
     fun open() {
+        inventorySync()
         p.openInventory(inventory)
     }
 
@@ -58,9 +59,15 @@ class ChestGUI(var p: Player, var col: NaturalNumber, name: String) {
 
     fun getGUIsArray(): Array<GUIObject> {
         val array: Array<GUIObject> =
-            Array(9 * col.toInt()) { GUIObject(NaturalNumber(it % 9), NaturalNumber(it / 9), ItemStack(Material.AIR)) }
-        for (x in 0 until 9) {
-            for (y in 0 until col.toInt()) {
+            Array(9 * col.toInt()) {
+                GUIObject(
+                    NaturalNumber(it % 9 + 1),
+                    NaturalNumber(it / 9 + 1),
+                    ItemStack(Material.AIR)
+                )
+            }
+        for (x in 1..9) {
+            for (y in 1..col.toInt()) {
                 val t = guis.get(NaturalNumber(x), NaturalNumber(y))
                 if (t == null) {
                     array[y * 9 + x] = GUIObject(NaturalNumber(x), NaturalNumber(y), ItemStack(Material.AIR))
@@ -85,11 +92,11 @@ class ChestGUI(var p: Player, var col: NaturalNumber, name: String) {
 /**
  * @param stack The ItemStack that will be showed in ChestGUI
  */
-class GUIObject(val x: NaturalNumber, val y: NaturalNumber, val real_stack: ItemStack) {
-    val handler = GUIObjectEventHandler(this, real_stack)
+class GUIObject(val x: NaturalNumber, val y: NaturalNumber, real_stack: ItemStack) {
     val id: ByteArray = GUIObjectByteManager.instance.getNew()
+    private val handler = GUIObjectEventHandler(this, real_stack)
     fun getStack() = handler.getStack()
-    fun addCallBack(f:KFunction1<InventoryClickEvent, Unit>):GUIObject{
+    fun addCallBack(f: KFunction1<InventoryClickEvent, Unit>): GUIObject {
         handler.callbacks.add(f)
         return this
     }
@@ -100,39 +107,59 @@ class GUIObjectEventHandler(
     stack: ItemStack,
     var callbacks: ArrayList<KFunction1<InventoryClickEvent, Unit>> = arrayListOf()
 ) {
-    private var copy = stack
+
+    companion object {
+        val nameKey = NamespacedKey(FlyLib.get()!!.plugin, "FlyLib")
+    }
+
+    private var copy = stack.clone()
 
     init {
-        Events.ClickEvent.register(::onClick as KFunction1<Event, Unit>)
+        println("Register")
+        Events.ClickEvent.register(::onClick)
+        println("Register End")
         val meta = copy.itemMeta
-        (meta as PersistentDataHolder).persistentDataContainer.set(
-            NamespacedKey(FlyLib.get()!!.plugin, "FlyLib"),
+        println("Before Set")
+        meta.persistentDataContainer.set(
+            nameKey,
             PersistentDataType.BYTE_ARRAY,
             obj.id
         )
-        copy.setItemMeta(meta)
+        println("After Set")
+        copy.itemMeta = meta
+        println("After Meta Set")
     }
 
     fun getStack() = copy
 
-    fun onClick(e: InventoryClickEvent) {
-        if (callbacks.isEmpty()) return
-        if (e.currentItem!!.hasItemMeta()) {
-            val meta = e.currentItem!!.itemMeta
-            if (meta.persistentDataContainer.has(
-                    NamespacedKey(FlyLib.get()!!.plugin, "FlyLib"),
-                    PersistentDataType.BYTE_ARRAY
-                )
-            ) {
-                if (obj.id === meta.persistentDataContainer.get(
-                        NamespacedKey(FlyLib.get()!!.plugin, "FlyLib"),
+    fun onClick(e: Event) {
+        if (e is InventoryClickEvent) {
+            println("Event Hook")
+            if (callbacks.isEmpty()) {
+                println("No CallBack")
+                return
+            }
+            if (e.currentItem!!.hasItemMeta()) {
+                val meta = e.currentItem!!.itemMeta
+                if (meta.persistentDataContainer.has(
+                        nameKey,
                         PersistentDataType.BYTE_ARRAY
                     )
                 ) {
-                    for (callback in callbacks) {
-                        callback.invoke(e)
+                    println("Data Found!")
+                    if (obj.id === meta.persistentDataContainer.get(
+                            nameKey,
+                            PersistentDataType.BYTE_ARRAY
+                        )
+                    ) {
+                        println("Data Got!")
+                        for (callback in callbacks) {
+                            callback.invoke(e)
+                        }
+                        e.isCancelled = true
                     }
-                    e.isCancelled = true
+                } else {
+                    println("Data not Found!")
                 }
             }
         }

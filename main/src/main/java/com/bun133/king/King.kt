@@ -45,7 +45,9 @@ class KingCommand() : CommandExecutor {
         when (args[0]) {
             "s", "start" -> King.isGoingOn = true
             "e", "end" -> King.isGoingOn = false
-            "c","choice" -> {}
+            "c","choice" -> {
+                ChoiceInventory(sender).open()
+            }
             else -> {
                 return false
             }
@@ -71,5 +73,6 @@ class ChoiceInventory(p:Player){
 
     fun test(e: InventoryClickEvent){
         e.whoClicked.sendMessage("Clicked!")
+        println("Clicked!")
     }
 }

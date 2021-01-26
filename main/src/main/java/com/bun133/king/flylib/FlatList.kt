@@ -82,8 +82,7 @@ class FlatListException(message: String) : Exception(message) {
 }
 
 /**
- * The Index Start Point is (0,0)
- * However,Even though,width is 1 and height is 1
+ * The Index Start Point is (1,1)
  */
 class SizedFlatList<K>(val width: NaturalNumber, val height: NaturalNumber) {
     private var flatList = FlatList<K>()

@@ -50,11 +50,13 @@ class ActionStore<E>(val size:Int){
     private var index = 0
 
     fun add(entry:E){
-        actions[index] = entry
-        index++
-        if(index >= size - 1){
-            index = 0
-        }
+//        actions[index] = entry
+//        index++
+//        if(index >= size - 1){
+//            index = 0
+//        }
+        actions.add(entry)
+        if(actions.size > size) actions.removeAt(0)
     }
 
     fun get(index:Int):E?{
