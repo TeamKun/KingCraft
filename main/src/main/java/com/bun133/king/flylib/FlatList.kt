@@ -102,10 +102,10 @@ class SizedFlatList<K>(val width: NaturalNumber, val height: NaturalNumber) {
     }
 
     fun outCheck(x: NaturalNumber, y: NaturalNumber) {
-        if (width - 1 < x.i) {
+        if (width < x.i) {
             throw IndexOutOfSizeException(x.i, y.i, width.i, height.i)
         }
-        if (height - 1 < y.i) {
+        if (height < y.i) {
             throw IndexOutOfSizeException(x.i, y.i, width.i, height.i)
         }
     }

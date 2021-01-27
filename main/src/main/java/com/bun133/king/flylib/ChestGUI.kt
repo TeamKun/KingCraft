@@ -18,7 +18,7 @@ import kotlin.collections.ArrayList
 import kotlin.reflect.KFunction1
 
 class ChestGUI(var p: Player, var col: NaturalNumber, name: String) {
-    var guis: SizedFlatList<GUIObject> = SizedFlatList(col, NaturalNumber(9))
+    var guis: SizedFlatList<GUIObject> = SizedFlatList(NaturalNumber(9), col)
         private set
     var inventory: Inventory
         private set
@@ -70,9 +70,10 @@ class ChestGUI(var p: Player, var col: NaturalNumber, name: String) {
             for (y in 1..col.toInt()) {
                 val t = guis.get(NaturalNumber(x), NaturalNumber(y))
                 if (t == null) {
-                    array[y * 9 + x] = GUIObject(NaturalNumber(x), NaturalNumber(y), ItemStack(Material.AIR))
+                    array[(y - 1) * 9 + (x - 1)] =
+                        GUIObject(NaturalNumber(x), NaturalNumber(y), ItemStack(Material.AIR))
                 } else {
-                    array[y * 9 + x] = t.t
+                    array[(y - 1) * 9 + (x - 1)] = t.t
                 }
             }
         }
@@ -112,31 +113,26 @@ class GUIObjectEventHandler(
         val nameKey = NamespacedKey(FlyLib.get()!!.plugin, "FlyLib")
     }
 
-    private var copy = stack.clone()
+    private var copy: ItemStack = stack.clone()
 
     init {
-        println("Register")
-        Events.ClickEvent.register(::onClick)
-        println("Register End")
         val meta = copy.itemMeta
-        println("Before Set")
-        meta.persistentDataContainer.set(
-            nameKey,
-            PersistentDataType.BYTE_ARRAY,
-            obj.id
-        )
-        println("After Set")
-        copy.itemMeta = meta
-        println("After Meta Set")
+        if (meta !== null) {
+            Events.ClickEvent.register(::onClick)
+            meta.persistentDataContainer.set(
+                nameKey,
+                PersistentDataType.BYTE_ARRAY,
+                obj.id
+            )
+            copy.itemMeta = meta
+        }
     }
 
     fun getStack() = copy
 
     fun onClick(e: Event) {
         if (e is InventoryClickEvent) {
-            println("Event Hook")
             if (callbacks.isEmpty()) {
-                println("No CallBack")
                 return
             }
             if (e.currentItem!!.hasItemMeta()) {
