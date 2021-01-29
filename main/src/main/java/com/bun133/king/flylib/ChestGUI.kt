@@ -203,9 +203,7 @@ class DropChestGUI(val title: String, val p: Player, val col: Int = 1) {
             throw IllegalArgumentException("ChestGUI col size is Illegal")
         }
         inventory = Bukkit.createInventory(p, col * 9, title)
-//        Events.InventoryMoveEvent.register(::onDrag)
         Events.InventoryCloseEvent.register(::onClose)
-//        Events.InventoryClickEvent.register(::onDrag)
     }
 
     fun open() {

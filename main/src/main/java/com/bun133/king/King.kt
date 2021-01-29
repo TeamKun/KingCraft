@@ -15,13 +15,19 @@ import org.bukkit.plugin.java.JavaPlugin
 class King : JavaPlugin() {
     companion object {
         var isGoingOn = false
+        var king: KingCommand? = null
     }
+
 
     override fun onEnable() {
         FlyLib(this)
         // Plugin startup logic
         server.pluginManager.registerEvents(Observer.instance, this)
-        getCommand("king")!!.setExecutor(KingCommand())
+        king = KingCommand()
+        getCommand("king")!!.setExecutor(king)
+        server.scheduler.runTaskTimer(this, Runnable {
+            king!!.checkGoOn()
+        }, 10, 1)
     }
 
     override fun onDisable() {
@@ -53,22 +59,33 @@ class KingCommand() : CommandExecutor {
         }
         return true
     }
+
+    private val goOn = mutableListOf<Order<*>>()
+
+    fun addGoOn(o: Order<*>, time: Int) {
+        o.setTimer(time)
+        goOn.add(o)
+    }
+
+    fun removeGoOn(o: Order<*>) {
+        goOn.remove(o)
+    }
+
+    fun checkGoOn() {
+        goOn.forEach {
+            it.onTick()
+        }
+    }
 }
 
 class ChoiceInventory(p: Player) {
     val gui = ChestGUI(p, NaturalNumber(4), "命令一覧")
 
     init {
-//        gui.addGUIObject(
-//            GUIObject(
-//                NaturalNumber(1),NaturalNumber(1),
-//                ItemStack(Material.CHEST,1)
-//            ).addCallBack(::test)
-//        )
         gui.addGUIObject(
             GUIObject(
                 NaturalNumber(1), NaturalNumber(1),
-                EasyItemBuilder.genItem(Material.CHEST,"掘れ!")
+                EasyItemBuilder.genItem(Material.CHEST, "掘れ!")
             ).addCallBack(::dig)
         )
     }
@@ -78,13 +95,13 @@ class ChoiceInventory(p: Player) {
     }
 
     fun dig(e: InventoryClickEvent) {
-        val dig_gui = DropChestGUI("掘らせるブロック選択",e.whoClicked as Player)
+        val dig_gui = DropChestGUI("掘らせるブロック選択", e.whoClicked as Player)
         dig_gui.register(::chooseDig).open()
     }
 
-    fun chooseDig(stack:MutableList<ItemStack>){
-        stack.forEach {
-            Bukkit.broadcastMessage("${it.type.key} is Chosen")
+    fun chooseDig(stack: MutableList<ItemStack>) {
+        stack.filter { it.type.isBlock }.forEach {
+            King.king!!.addGoOn(AbstractOrders.Dig(it.type, it.amount), 120 * 20)
         }
     }
 }

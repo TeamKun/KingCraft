@@ -12,13 +12,41 @@ interface Order<E> {
     fun getDisplayName(): String
     fun onStart()
     fun getNoobs(): MutableList<Player>
+    fun killAll()
+    fun onTick()
+    fun setTimer(i:Int)
+}
+
+abstract class OrderBase<E>:Order<E>{
+    var time : Int = -1000
+
+    override fun onTick() {
+        if(time == -1000){
+        }else{
+            if(time < 0){
+                println("時間切れ!!!!")
+                killAll()
+                time = -1000
+            }
+        }
+    }
+
+    override fun setTimer(i: Int) {
+        time = i
+    }
+
+    override fun killAll() {
+        getNoobs().forEach {
+            it.health = 0.0
+        }
+    }
 }
 
 class AbstractOrders {
     /**
      * 指定されたブロック掘るやつ
      */
-    class Dig(var material: Material) : Order<BlockBreakEvent> {
+    class Dig(var material: Material,var amount:Int) : OrderBase<BlockBreakEvent>() {
         override fun getDisplayName(): String = "掘れ!"
         override fun onStart() {
             Observer.instance.dig = ActionStore(Observer.store_size)
@@ -28,11 +56,20 @@ class AbstractOrders {
         override fun getNoobs(): MutableList<Player> {
             val list = mutableListOf<Player>()
             list.addAll(Bukkit.getOnlinePlayers())
+            val map = mutableMapOf<Player,Int>()
             getAll().actions.forEach {
                 if (it.block.type === material) {
-                    list.remove(it.player)
+                    if(map[it.player]==null) map[it.player] = 0
+                    map[it.player] = 1 + map[it.player]!!
                 }
             }
+
+            map.forEach { (t, u) ->
+                if(u >= amount){
+                    list.remove(t)
+                }
+            }
+
             return list
         }
     }
@@ -40,7 +77,7 @@ class AbstractOrders {
     /**
      * Moveといいつつ、動いちゃダメな奴
      */
-    class Move():Order<PlayerMoveEvent>{
+    class Move(): OrderBase<PlayerMoveEvent>() {
         override fun getAll(): ActionStore<PlayerMoveEvent> = Observer.instance.move
         override fun getDisplayName(): String = "動くな!"
         override fun onStart() {
@@ -58,7 +95,7 @@ class AbstractOrders {
     /**
      * 死んじゃいけないやつ
      */
-    class NotDeath():Order<PlayerDeathEvent>{
+    class NotDeath(): OrderBase<PlayerDeathEvent>() {
         override fun getAll(): ActionStore<PlayerDeathEvent> = Observer.instance.death
         override fun getDisplayName(): String = "死ぬな!"
         override fun onStart() {
@@ -76,7 +113,7 @@ class AbstractOrders {
     /**
      * 死なないといけないやつ
      */
-    class Death():Order<PlayerDeathEvent>{
+    class Death(): OrderBase<PlayerDeathEvent>() {
         override fun getAll(): ActionStore<PlayerDeathEvent> = Observer.instance.death
         override fun getDisplayName(): String = "(これ考え中)!"
         override fun onStart() {
