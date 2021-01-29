@@ -6,6 +6,7 @@ import org.bukkit.entity.Player
 import org.bukkit.event.block.BlockBreakEvent
 import org.bukkit.event.entity.PlayerDeathEvent
 import org.bukkit.event.player.PlayerMoveEvent
+import org.bukkit.inventory.ItemStack
 
 interface Order<E> {
     fun getAll(): ActionStore<E>
@@ -13,26 +14,35 @@ interface Order<E> {
     fun onStart()
     fun getNoobs(): MutableList<Player>
     fun killAll()
-    fun onTick()
+    fun onTick():Boolean
     fun setTimer(i:Int)
+    fun getTimer():Int
 }
 
 abstract class OrderBase<E>:Order<E>{
-    var time : Int = -1000
+    companion object{
+        const val TimeUP = -1114
+    }
+    var time : Int = 0
+    var isTimerMoving = false
 
-    override fun onTick() {
-        if(time == -1000){
-        }else{
-            if(time < 0){
+    override fun getTimer() = time
+    override fun onTick(): Boolean {
+        if(isTimerMoving){
+            if(time <= 0){
                 println("時間切れ!!!!")
                 killAll()
-                time = -1000
+                isTimerMoving = false
+                return true
             }
+            time -= 1
         }
+        return false
     }
 
     override fun setTimer(i: Int) {
         time = i
+        isTimerMoving = true
     }
 
     override fun killAll() {
@@ -46,25 +56,26 @@ class AbstractOrders {
     /**
      * 指定されたブロック掘るやつ
      */
-    class Dig(var material: Material,var amount:Int) : OrderBase<BlockBreakEvent>() {
+    class Dig(var material: Material,var amount:Int) : OrderBase<Pair<Player,ItemStack>>() {
         override fun getDisplayName(): String = "掘れ!"
         override fun onStart() {
             Observer.instance.dig = ActionStore(Observer.store_size)
         }
 
-        override fun getAll(): ActionStore<BlockBreakEvent> = Observer.instance.dig
+        override fun getAll(): ActionStore<Pair<Player,ItemStack>> = Observer.instance.dig
         override fun getNoobs(): MutableList<Player> {
             val list = mutableListOf<Player>()
             list.addAll(Bukkit.getOnlinePlayers())
             val map = mutableMapOf<Player,Int>()
             getAll().actions.forEach {
-                if (it.block.type === material) {
-                    if(map[it.player]==null) map[it.player] = 0
-                    map[it.player] = 1 + map[it.player]!!
+                if (it.second.type === material) {
+                    if(map[it.first] == null) map[it.first] = 0
+                    map[it.first] = it.second.amount + map[it.first]!!
                 }
             }
 
             map.forEach { (t, u) ->
+                println("Player:$t is BrakeBlocks:$u")
                 if(u >= amount){
                     list.remove(t)
                 }

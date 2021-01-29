@@ -64,6 +64,7 @@ class KingCommand() : CommandExecutor {
 
     fun addGoOn(o: Order<*>, time: Int) {
         o.setTimer(time)
+        o.onStart()
         goOn.add(o)
     }
 
@@ -72,8 +73,18 @@ class KingCommand() : CommandExecutor {
     }
 
     fun checkGoOn() {
+        val list = mutableListOf<Order<*>>()
         goOn.forEach {
-            it.onTick()
+            if(it.onTick()) list.add(it)
+        }
+
+        list.forEach { removeGoOn(it) }
+        //強引
+
+        if(goOn.size >= 1){
+            Bukkit.getOnlinePlayers().forEach {
+                it.sendActionBar("LeftTime:${goOn[0].getTimer()}")
+            }
         }
     }
 }
@@ -101,7 +112,9 @@ class ChoiceInventory(p: Player) {
 
     fun chooseDig(stack: MutableList<ItemStack>) {
         stack.filter { it.type.isBlock }.forEach {
-            King.king!!.addGoOn(AbstractOrders.Dig(it.type, it.amount), 120 * 20)
+            King.king!!.addGoOn(AbstractOrders.Dig(it.type, it.amount), 20 * 20)
         }
+
+        King.isGoingOn = true
     }
 }

@@ -7,6 +7,7 @@ import org.bukkit.event.Listener
 import org.bukkit.event.block.BlockBreakEvent
 import org.bukkit.event.entity.PlayerDeathEvent
 import org.bukkit.event.player.PlayerMoveEvent
+import org.bukkit.inventory.ItemStack
 
 class Observer : Listener {
     companion object {
@@ -15,12 +16,12 @@ class Observer : Listener {
         val instance = Observer()
     }
 
-    var dig:ActionStore<BlockBreakEvent> = ActionStore(store_size)
+    var dig:ActionStore<Pair<Player,ItemStack>> = ActionStore(store_size)
     @EventHandler
     fun onDig(e: BlockBreakEvent) {
         if(!King.isGoingOn) return
         if(isJoined(e.player)){
-            dig.add(e)
+            dig.add(Pair(e.player, ItemStack(e.block.type,1)))
         }
     }
 
@@ -50,13 +51,8 @@ class ActionStore<E>(val size:Int){
     private var index = 0
 
     fun add(entry:E){
-//        actions[index] = entry
-//        index++
-//        if(index >= size - 1){
-//            index = 0
-//        }
         actions.add(entry)
-        if(actions.size > size) actions.removeAt(0)
+//        if(actions.size > size) actions.removeAt(0)
     }
 
     fun get(index:Int):E?{
