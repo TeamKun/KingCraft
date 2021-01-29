@@ -1,9 +1,8 @@
 package com.bun133.king
 
-import com.bun133.king.flylib.ChestGUI
-import com.bun133.king.flylib.FlyLib
-import com.bun133.king.flylib.GUIObject
+import com.bun133.king.flylib.*
 import com.flylib.util.NaturalNumber
+import org.bukkit.Bukkit
 import org.bukkit.Material
 import org.bukkit.command.Command
 import org.bukkit.command.CommandExecutor
@@ -45,7 +44,7 @@ class KingCommand() : CommandExecutor {
         when (args[0]) {
             "s", "start" -> King.isGoingOn = true
             "e", "end" -> King.isGoingOn = false
-            "c","choice" -> {
+            "c", "choice" -> {
                 ChoiceInventory(sender).open()
             }
             else -> {
@@ -56,23 +55,36 @@ class KingCommand() : CommandExecutor {
     }
 }
 
-class ChoiceInventory(p:Player){
-    val gui = ChestGUI(p, NaturalNumber(4),"命令一覧")
+class ChoiceInventory(p: Player) {
+    val gui = ChestGUI(p, NaturalNumber(4), "命令一覧")
+
     init {
+//        gui.addGUIObject(
+//            GUIObject(
+//                NaturalNumber(1),NaturalNumber(1),
+//                ItemStack(Material.CHEST,1)
+//            ).addCallBack(::test)
+//        )
         gui.addGUIObject(
             GUIObject(
-                NaturalNumber(1),NaturalNumber(1),
-                ItemStack(Material.CHEST,1)
-            ).addCallBack(::test)
+                NaturalNumber(1), NaturalNumber(1),
+                EasyItemBuilder.genItem(Material.CHEST,"掘れ!")
+            ).addCallBack(::dig)
         )
     }
 
-    fun open(){
+    fun open() {
         gui.open()
     }
 
-    fun test(e: InventoryClickEvent){
-        e.whoClicked.sendMessage("Clicked!")
-        println("Clicked!")
+    fun dig(e: InventoryClickEvent) {
+        val dig_gui = DropChestGUI("掘らせるブロック選択",e.whoClicked as Player)
+        dig_gui.register(::chooseDig).open()
+    }
+
+    fun chooseDig(stack:MutableList<ItemStack>){
+        stack.forEach {
+            Bukkit.broadcastMessage("${it.type.key} is Chosen")
+        }
     }
 }

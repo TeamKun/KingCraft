@@ -6,17 +6,15 @@ import org.bukkit.entity.Player
 import org.bukkit.event.block.BlockBreakEvent
 import org.bukkit.event.entity.PlayerDeathEvent
 import org.bukkit.event.player.PlayerMoveEvent
-import kotlin.reflect.KClass
 
 interface Order<E> {
-//    fun isDone(p: Player): Boolean
     fun getAll(): ActionStore<E>
     fun getDisplayName(): String
     fun onStart()
     fun getNoobs(): MutableList<Player>
 }
 
-class Orders {
+class AbstractOrders {
     /**
      * 指定されたブロック掘るやつ
      */

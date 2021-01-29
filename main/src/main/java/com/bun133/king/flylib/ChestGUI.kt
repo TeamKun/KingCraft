@@ -8,9 +8,9 @@ import org.bukkit.NamespacedKey
 import org.bukkit.entity.Player
 import org.bukkit.event.Event
 import org.bukkit.event.inventory.InventoryClickEvent
+import org.bukkit.event.inventory.InventoryCloseEvent
 import org.bukkit.inventory.Inventory
 import org.bukkit.inventory.ItemStack
-import org.bukkit.persistence.PersistentDataHolder
 import org.bukkit.persistence.PersistentDataType
 import java.lang.IllegalArgumentException
 import java.util.*
@@ -32,14 +32,16 @@ class ChestGUI(var p: Player, var col: NaturalNumber, name: String) {
         inventory = Bukkit.createInventory(p, col * 9, name)
     }
 
+    /**
+     * Open Inventory
+     */
     fun open() {
         inventorySync()
         p.openInventory(inventory)
     }
 
     /**
-     * @param x left is 1,right is max
-     * @param y top is 1,bottom is max
+     * add GUIObject to GUI
      */
     fun addGUIObject(obj: GUIObject) {
         guis.set(obj.x, obj.y, obj)
@@ -92,9 +94,15 @@ class ChestGUI(var p: Player, var col: NaturalNumber, name: String) {
 
 /**
  * @param stack The ItemStack that will be showed in ChestGUI
+ *
+ * e.g.
+ * GUIObject(5,2,ItemStack(Material.Chest,1))
+ * Chest Will be Showed at x:5,y:2
+ * left up is (1,1)
  */
 class GUIObject(val x: NaturalNumber, val y: NaturalNumber, real_stack: ItemStack) {
-    val id: ByteArray = GUIObjectByteManager.instance.getNew()
+    //    val id: ByteArray = GUIObjectByteManager.instance.getNew()
+    val id: String = UUID.randomUUID().toString()
     private val handler = GUIObjectEventHandler(this, real_stack)
     fun getStack() = handler.getStack()
     fun addCallBack(f: KFunction1<InventoryClickEvent, Unit>): GUIObject {
@@ -118,10 +126,10 @@ class GUIObjectEventHandler(
     init {
         val meta = copy.itemMeta
         if (meta !== null) {
-            Events.ClickEvent.register(::onClick)
+            Events.InventoryClickEvent.register(::onClick)
             meta.persistentDataContainer.set(
                 nameKey,
-                PersistentDataType.BYTE_ARRAY,
+                PersistentDataType.STRING,
                 obj.id
             )
             copy.itemMeta = meta
@@ -135,27 +143,26 @@ class GUIObjectEventHandler(
             if (callbacks.isEmpty()) {
                 return
             }
+            if(e.currentItem === null) return
             if (e.currentItem!!.hasItemMeta()) {
                 val meta = e.currentItem!!.itemMeta
                 if (meta.persistentDataContainer.has(
                         nameKey,
-                        PersistentDataType.BYTE_ARRAY
+                        PersistentDataType.STRING
                     )
                 ) {
-                    println("Data Found!")
                     if (obj.id === meta.persistentDataContainer.get(
                             nameKey,
-                            PersistentDataType.BYTE_ARRAY
+                            PersistentDataType.STRING
                         )
                     ) {
-                        println("Data Got!")
                         for (callback in callbacks) {
                             callback.invoke(e)
                         }
                         e.isCancelled = true
                     }
                 } else {
-                    println("Data not Found!")
+                    println("[FlyLib][WARN]Data not Found!")
                 }
             }
         }
@@ -187,3 +194,47 @@ class GUIObjectByteManager() {
 }
 
 class GUIObjectByteException(b: Byte) : Exception("$b is already used byte")
+
+class DropChestGUI(val title: String, val p: Player, val col: Int = 1) {
+    val inventory: Inventory
+    private val registry = mutableListOf<KFunction1<MutableList<ItemStack>,Unit>>()
+    init {
+        if (col > 6 || col < 1) {
+            throw IllegalArgumentException("ChestGUI col size is Illegal")
+        }
+        inventory = Bukkit.createInventory(p, col * 9, title)
+//        Events.InventoryMoveEvent.register(::onDrag)
+        Events.InventoryCloseEvent.register(::onClose)
+//        Events.InventoryClickEvent.register(::onDrag)
+    }
+
+    fun open() {
+        p.openInventory(inventory)
+    }
+
+    fun onClose(e:Event){
+        if(e is InventoryCloseEvent){
+            if(e.inventory == inventory){
+                val list = getAllContents()
+                registry.forEach {
+                    it(list)
+                }
+            }
+        }
+    }
+
+    fun getAllContents(): MutableList<ItemStack> {
+        val list = mutableListOf<ItemStack>()
+        inventory.contents.iterator().forEach {
+            if(it != null && it.type !== Material.AIR){
+                list.add(it)
+            }
+        }
+        return list
+    }
+
+    fun register(f:KFunction1<MutableList<ItemStack>,Unit>):DropChestGUI{
+        registry.add(f)
+        return this
+    }
+}
