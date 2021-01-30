@@ -24,7 +24,7 @@ class MainListener : Listener {
     }
 
     @EventHandler
-    fun onInventoryDrop(e: InventoryCloseEvent) {
+    fun onInventoryClose(e: InventoryCloseEvent) {
         Events.InventoryCloseEvent.execute(e)
     }
 }

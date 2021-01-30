@@ -36,12 +36,14 @@ class Observer : Listener {
 
     var death:ActionStore<PlayerDeathEvent> = ActionStore(store_size / 2)
     @EventHandler
-    fun onMove(e: PlayerDeathEvent) {
+    fun onDeath(e: PlayerDeathEvent) {
         if(!King.isGoingOn) return
         if(isJoined(e.entity)){
             death.add(e)
         }
     }
+
+    var empty:ActionStore<Empty> = ActionStore(1)
 }
 
 class ActionStore<E>(val size:Int){

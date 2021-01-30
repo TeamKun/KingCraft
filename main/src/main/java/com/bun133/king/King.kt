@@ -4,6 +4,7 @@ import com.bun133.king.flylib.*
 import com.flylib.util.NaturalNumber
 import org.bukkit.Bukkit
 import org.bukkit.Material
+import org.bukkit.World
 import org.bukkit.command.Command
 import org.bukkit.command.CommandExecutor
 import org.bukkit.command.CommandSender
@@ -16,6 +17,7 @@ class King : JavaPlugin() {
     companion object {
         var isGoingOn = false
         var king: KingCommand? = null
+        const val time = 20 * 20
     }
 
 
@@ -75,15 +77,15 @@ class KingCommand() : CommandExecutor {
     fun checkGoOn() {
         val list = mutableListOf<Order<*>>()
         goOn.forEach {
-            if(it.onTick()) list.add(it)
+            if (it.onTick()) list.add(it)
         }
 
         list.forEach { removeGoOn(it) }
         //強引
 
-        if(goOn.size >= 1){
+        if (goOn.size >= 1) {
             Bukkit.getOnlinePlayers().forEach {
-                it.sendActionBar("LeftTime:${goOn[0].getTimer()}")
+                it.sendActionBar("${goOn[0].getDisplayName()} LeftTime:${goOn[0].getTimer()}")
             }
         }
     }
@@ -99,6 +101,27 @@ class ChoiceInventory(p: Player) {
                 EasyItemBuilder.genItem(Material.CHEST, "掘れ!")
             ).addCallBack(::dig)
         )
+
+        gui.addGUIObject(
+            GUIObject(
+                NaturalNumber(2), NaturalNumber(1),
+                EasyItemBuilder.genItem(Material.CHEST, "動くな!")
+            ).addCallBack(::move)
+        )
+
+        gui.addGUIObject(
+            GUIObject(
+                NaturalNumber(3), NaturalNumber(1),
+                EasyItemBuilder.genItem(Material.CHEST, "死ぬな!")
+            ).addCallBack(::noDeath)
+        )
+
+        gui.addGUIObject(
+            GUIObject(
+                NaturalNumber(4), NaturalNumber(1),
+                EasyItemBuilder.genItem(Material.CHEST, "来い!")
+            ).addCallBack(::come)
+        )
     }
 
     fun open() {
@@ -107,14 +130,65 @@ class ChoiceInventory(p: Player) {
 
     fun dig(e: InventoryClickEvent) {
         val dig_gui = DropChestGUI("掘らせるブロック選択", e.whoClicked as Player)
+        (e.whoClicked as Player).closeInventory()
         dig_gui.register(::chooseDig).open()
     }
 
     fun chooseDig(stack: MutableList<ItemStack>) {
         stack.filter { it.type.isBlock }.forEach {
-            King.king!!.addGoOn(AbstractOrders.Dig(it.type, it.amount), 20 * 20)
+            King.king!!.addGoOn(AbstractOrders.Dig(it.type, it.amount), King.time)
         }
 
         King.isGoingOn = true
+    }
+
+    fun move(e: InventoryClickEvent) {
+        King.king!!.addGoOn(AbstractOrders.Move(), King.time)
+        (e.whoClicked as Player).closeInventory()
+    }
+
+    fun noDeath(e: InventoryClickEvent) {
+        King.king!!.addGoOn(AbstractOrders.NotDeath(), King.time)
+        (e.whoClicked as Player).closeInventory()
+    }
+
+    fun come(e: InventoryClickEvent) {
+        val dim_gui = ChestGUI(e.whoClicked as Player, NaturalNumber(3), "来させる場所選択")
+        (e.whoClicked as Player).closeInventory()
+        dim_gui.addGUIObject(
+            GUIObject(
+                NaturalNumber(1), NaturalNumber(1),
+                EasyItemBuilder.genItem(Material.GRASS_BLOCK, "オーバーワールド")
+            ).addCallBack(::addCome)
+        )
+
+        dim_gui.addGUIObject(
+            GUIObject(
+                NaturalNumber(2), NaturalNumber(1),
+                EasyItemBuilder.genItem(Material.NETHERRACK, "ネザー")
+            ).addCallBack(::addCome)
+
+        )
+
+        dim_gui.addGUIObject(
+            GUIObject(
+                NaturalNumber(3), NaturalNumber(1),
+                EasyItemBuilder.genItem(Material.END_STONE, "エンド")
+            ).addCallBack(::addCome)
+
+        )
+
+        dim_gui.open()
+    }
+
+    fun addCome(e:InventoryClickEvent){
+        if(e.currentItem == null) return
+        when(e.currentItem!!.type){
+            Material.GRASS_BLOCK -> King.king!!.addGoOn(AbstractOrders.BeDim(World.Environment.NORMAL), King.time * 2)
+            Material.NETHERRACK -> King.king!!.addGoOn(AbstractOrders.BeDim(World.Environment.NETHER), King.time * 2)
+            Material.END_STONE -> King.king!!.addGoOn(AbstractOrders.BeDim(World.Environment.THE_END), King.time * 2)
+            else -> return
+        }
+        (e.whoClicked as Player).closeInventory()
     }
 }

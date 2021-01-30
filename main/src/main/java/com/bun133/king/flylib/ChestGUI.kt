@@ -109,12 +109,18 @@ class GUIObject(val x: NaturalNumber, val y: NaturalNumber, real_stack: ItemStac
         handler.callbacks.add(f)
         return this
     }
+
+    fun addCallBack(r:(InventoryClickEvent) -> Unit): GUIObject{
+        handler.runnables.add(r)
+        return this
+    }
 }
 
 class GUIObjectEventHandler(
     var obj: GUIObject,
     stack: ItemStack,
-    var callbacks: ArrayList<KFunction1<InventoryClickEvent, Unit>> = arrayListOf()
+    var callbacks: ArrayList<KFunction1<InventoryClickEvent, Unit>> = arrayListOf(),
+    var runnables:ArrayList<(InventoryClickEvent) -> Unit> = arrayListOf()
 ) {
 
     companion object {
@@ -157,6 +163,9 @@ class GUIObjectEventHandler(
                         )
                     ) {
                         for (callback in callbacks) {
+                            callback.invoke(e)
+                        }
+                        for (callback in runnables) {
                             callback.invoke(e)
                         }
                         e.isCancelled = true
