@@ -85,7 +85,7 @@ class KingCommand() : CommandExecutor {
 
         if (goOn.size >= 1) {
             Bukkit.getOnlinePlayers().forEach {
-                it.sendActionBar("${goOn[0].getDisplayName()} LeftTime:${goOn[0].getTimer()}")
+                it.sendActionBar("${goOn[0].getDisplayName()} 残り時間:${goOn[0].getTimer()/20}秒")
             }
         }
     }

@@ -3,6 +3,7 @@ package com.bun133.king.flylib
 import org.bukkit.event.Event
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
+import org.bukkit.event.entity.PlayerDeathEvent
 import org.bukkit.event.inventory.InventoryClickEvent
 import org.bukkit.event.inventory.InventoryCloseEvent
 import org.bukkit.event.inventory.InventoryMoveItemEvent
@@ -27,12 +28,18 @@ class MainListener : Listener {
     fun onInventoryClose(e: InventoryCloseEvent) {
         Events.InventoryCloseEvent.execute(e)
     }
+
+    @EventHandler
+    fun onPlayerDeath(e: PlayerDeathEvent) {
+        Events.PlayerDeathEvent.execute(e)
+    }
 }
 
 enum class Events(val generic_event_name: String) {
     InventoryClickEvent("InventoryClickEvent"),
     InventoryCloseEvent("InventoryCloseEvent"),
-    InventoryMoveEvent("InventoryMoveItemEvent");
+    InventoryMoveEvent("InventoryMoveItemEvent"),
+    PlayerDeathEvent("PlayerDeathEvent");
     private val register: ArrayList<KFunction1<Event, Unit>> = arrayListOf()
     fun register(f: KFunction1<Event, Unit>) {
         register.add(f)

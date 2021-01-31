@@ -1,10 +1,14 @@
 package com.bun133.king
 
+import com.bun133.king.flylib.Events
 import com.bun133.king.flylib.displayName
+import com.destroystokyo.paper.Title
 import org.bukkit.Bukkit
+import org.bukkit.ChatColor
 import org.bukkit.Material
 import org.bukkit.World
 import org.bukkit.entity.Player
+import org.bukkit.event.Event
 import org.bukkit.event.block.BlockBreakEvent
 import org.bukkit.event.entity.PlayerDeathEvent
 import org.bukkit.event.player.PlayerMoveEvent
@@ -22,6 +26,11 @@ interface Order<E> {
 }
 
 abstract class OrderBase<E> : Order<E> {
+    init {
+        Events.PlayerDeathEvent.register(::onDeath)
+    }
+
+
     companion object {
         const val TimeUP = -1114
     }
@@ -30,7 +39,26 @@ abstract class OrderBase<E> : Order<E> {
     var isTimerMoving = false
 
     override fun getTimer() = time
+
+    val noticedPlayer = mutableListOf<Player>()
+
+    fun updateNotice() {
+        val list = getNoobs()
+        if (list.size != noticedPlayer.size) {
+            list.removeAll(noticedPlayer)
+            list.forEach {
+                it.sendTitle(Title("" + ChatColor.RED + "✘" + ChatColor.RESET + "命令に反した"))
+                noticedPlayer.add(it)
+            }
+        }
+    }
+
     override fun onTick(): Boolean {
+        updateNotice()
+        return mainTick()
+    }
+
+    fun mainTick(): Boolean {
         if (isTimerMoving) {
             if (time <= 0) {
                 println("時間切れ!!!!")
@@ -50,7 +78,19 @@ abstract class OrderBase<E> : Order<E> {
 
     override fun killAll() {
         getNoobs().forEach {
+            killedPlayers.add(it)
             it.health = 0.0
+        }
+    }
+
+    private val killedPlayers = mutableListOf<Player>()
+
+    fun onDeath(e: Event) {
+        if (e is PlayerDeathEvent) {
+            if (killedPlayers.contains(e.entity)) {
+                e.deathMessage = "${e.entity.displayName}は${getDisplayName()}という命令を守らなかってので死んでしまった"
+                killedPlayers.remove(e.entity)
+            }
         }
     }
 }
@@ -84,6 +124,10 @@ class AbstractOrders {
             }
 
             return list
+        }
+
+        override fun onTick(): Boolean {
+            return super.mainTick()
         }
     }
 
@@ -173,6 +217,10 @@ class AbstractOrders {
                 it.world.environment != dimention
             }.forEach { li.add(it) }
             return li
+        }
+
+        override fun onTick(): Boolean {
+            return super.mainTick()
         }
     }
 }
