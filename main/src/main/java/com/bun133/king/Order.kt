@@ -3,13 +3,9 @@ package com.bun133.king
 import com.bun133.king.flylib.Events
 import com.bun133.king.flylib.displayName
 import com.destroystokyo.paper.Title
-import org.bukkit.Bukkit
-import org.bukkit.ChatColor
-import org.bukkit.Material
-import org.bukkit.World
+import org.bukkit.*
 import org.bukkit.entity.Player
 import org.bukkit.event.Event
-import org.bukkit.event.block.BlockBreakEvent
 import org.bukkit.event.entity.PlayerDeathEvent
 import org.bukkit.event.player.PlayerMoveEvent
 import org.bukkit.inventory.ItemStack
@@ -19,10 +15,21 @@ interface Order<E> {
     fun getDisplayName(): String
     fun onStart()
     fun getNoobs(): MutableList<Player>
+    fun getPros(): MutableList<Player>
     fun killAll()
     fun onTick(): Boolean
     fun setTimer(i: Int)
     fun getTimer(): Int
+}
+
+/**
+ * Pending - 判定中
+ * FAILURE - 失敗
+ * SUCCESS - 成功
+ * FINAL_SUCCESS - 最終Tickにおいて成功(それ以外のTickにおいてはPendingと同じ)
+ */
+enum class OrderResult {
+    PENDING, FAILURE, SUCCESS, UNDEFINED, FINAL_SUCCESS
 }
 
 abstract class OrderBase<E> : Order<E> {
@@ -53,7 +60,13 @@ abstract class OrderBase<E> : Order<E> {
         }
     }
 
+    var result: MutableMap<Player, OrderResult> = mutableMapOf()
+    fun updateResults() {
+        result = getResults(time <= 0)
+    }
+
     override fun onTick(): Boolean {
+        updateResults()
         updateNotice()
         return mainTick()
     }
@@ -93,6 +106,20 @@ abstract class OrderBase<E> : Order<E> {
             }
         }
     }
+
+    override fun getNoobs(): MutableList<Player> {
+        return result.filter { it.value === OrderResult.FAILURE }.map { it.key }.toMutableList()
+    }
+
+    override fun getPros(): MutableList<Player> {
+        return result.filter { it.value === OrderResult.SUCCESS }.map { it.key }.toMutableList()
+    }
+
+    fun isPlayerDone(p: Player): OrderResult {
+        return result.getOrDefault(p, OrderResult.UNDEFINED)
+    }
+
+    abstract fun getResults(isFinalTick: Boolean): MutableMap<Player, OrderResult>
 }
 
 class AbstractOrders {
@@ -106,10 +133,18 @@ class AbstractOrders {
         }
 
         override fun getAll(): ActionStore<Pair<Player, ItemStack>> = Observer.instance.dig
-        override fun getNoobs(): MutableList<Player> {
-            val list = mutableListOf<Player>()
-            list.addAll(Bukkit.getOnlinePlayers())
+        override fun onTick(): Boolean {
+            return super.mainTick()
+        }
+
+        override fun getResults(isFinalTick: Boolean): MutableMap<Player, OrderResult> {
+            val list = mutableMapOf<Player, OrderResult>()
+            Bukkit.getOnlinePlayers()
+                .filter { Observer.isJoined(it) }
+                .forEach { list[it] = OrderResult.UNDEFINED }
+
             val map = mutableMapOf<Player, Int>()
+
             getAll().actions.forEach {
                 if (it.second.type === material) {
                     if (map[it.first] == null) map[it.first] = 0
@@ -117,17 +152,15 @@ class AbstractOrders {
                 }
             }
 
-            map.forEach { (t, u) ->
-                if (u >= amount) {
-                    list.remove(t)
+            map.forEach { (player, amount) ->
+                if (amount >= this.amount) {
+                    list[player] = OrderResult.SUCCESS
+                } else {
+                    list[player] = OrderResult.FINAL_SUCCESS
                 }
             }
 
             return list
-        }
-
-        override fun onTick(): Boolean {
-            return super.mainTick()
         }
     }
 
@@ -141,8 +174,8 @@ class AbstractOrders {
             Observer.instance.move = ActionStore(Observer.store_size * 3)
         }
 
-        override fun getNoobs(): MutableList<Player> {
-            val list = mutableListOf<Player>()
+        override fun getResults(isFinalTick: Boolean): MutableMap<Player, OrderResult> {
+            val list = mutableMapOf<Player, OrderResult>()
             getAll().actions
                 .filter {
                     it.from.x != it.to.x ||
@@ -154,8 +187,12 @@ class AbstractOrders {
                 }
                 .distinct()
                 .forEach {
-                    list.add(it)
+                    list[it] = OrderResult.FAILURE
                 }
+            Bukkit.getOnlinePlayers()
+                .filter { Observer.isJoined(it) }
+                .filter { !list.containsKey(it) }
+                .forEach { list[it] = OrderResult.FINAL_SUCCESS }
             return list
         }
     }
@@ -170,14 +207,18 @@ class AbstractOrders {
             Observer.instance.death = ActionStore(Observer.store_size)
         }
 
-        override fun getNoobs(): MutableList<Player> {
-            val list = mutableListOf<Player>()
+        override fun getResults(isFinalTick: Boolean): MutableMap<Player, OrderResult> {
+            val list = mutableMapOf<Player, OrderResult>()
             getAll().actions
                 .map { it.entity }
                 .distinct()
                 .forEach {
-                    list.add(it)
+                    list[it] = OrderResult.FAILURE
                 }
+            Bukkit.getOnlinePlayers()
+                .filter { Observer.isJoined(it) }
+                .filter { !list.containsKey(it) }
+                .forEach { list[it] = OrderResult.FINAL_SUCCESS }
             return list
         }
     }
@@ -192,16 +233,21 @@ class AbstractOrders {
             Observer.instance.death = ActionStore(Observer.store_size)
         }
 
-        override fun getNoobs(): MutableList<Player> {
-            val list = mutableListOf<Player>()
-            list.addAll(Bukkit.getOnlinePlayers())
-            getAll().actions.forEach {
-                list.remove(it.entity)
-            }
-            return list
+        override fun getResults(isFinalTick: Boolean): MutableMap<Player, OrderResult> {
+            val map = mutableMapOf<Player, OrderResult>()
+            getAll().actions
+                .forEach { map[it.entity] = OrderResult.SUCCESS }
+            Bukkit.getOnlinePlayers()
+                .filter { Observer.isJoined(it) }
+                .filter { !map.containsKey(it) }
+                .forEach { map[it] = OrderResult.PENDING }
+            return map
         }
     }
 
+    /**
+     * 特定ディメンションにいないといけないやつ
+     */
     class BeDim(var dimention: World.Environment) : OrderBase<Empty>() {
         override fun getAll(): ActionStore<Empty> = Observer.instance.empty
         override fun getDisplayName(): String = "${dimention.displayName()}に行け!"
@@ -209,18 +255,37 @@ class AbstractOrders {
             Observer.instance.death = ActionStore(1)
         }
 
-        override fun getNoobs(): MutableList<Player> {
-            val list = mutableListOf<Player>()
-            val li = mutableListOf<Player>()
-            list.addAll(Bukkit.getOnlinePlayers())
-            list.filter {
-                it.world.environment != dimention
-            }.forEach { li.add(it) }
-            return li
-        }
-
         override fun onTick(): Boolean {
             return super.mainTick()
         }
+
+        override fun getResults(isFinalTick: Boolean): MutableMap<Player, OrderResult> {
+            val map = mutableMapOf<Player,OrderResult>()
+            Bukkit.getOnlinePlayers()
+                .filter { Observer.isJoined(it) }
+                .forEach {
+                    if(it.world.environment == dimention){
+                        map[it] = OrderResult.SUCCESS
+                    }else map[it] = OrderResult.PENDING
+                }
+            return map
+        }
+    }
+
+    /**
+     * 特定の場所に行かなきゃいけないやつ
+     */
+    class Come(var loc: Location) : OrderBase<PlayerMoveEvent>() {
+        override fun getAll(): ActionStore<PlayerMoveEvent> = Observer.instance.move
+        override fun getDisplayName(): String = "X:${loc.blockX} Y:${loc.blockY} Z:${loc.blockZ}まで行け!"
+        override fun onStart() {
+            Observer.instance.move = ActionStore(Observer.store_size * 3)
+        }
+
+        override fun getResults(isFinalTick: Boolean): MutableMap<Player, OrderResult> {
+            // TODO
+            return mutableMapOf()
+        }
+
     }
 }
