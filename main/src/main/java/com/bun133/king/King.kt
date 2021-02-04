@@ -27,6 +27,7 @@ class King : JavaPlugin() {
         server.pluginManager.registerEvents(Observer.instance, this)
         king = KingCommand()
         getCommand("king")!!.setExecutor(king)
+        getCommand("king")!!.tabCompleter = KingTab.gen()
         server.scheduler.runTaskTimer(this, Runnable {
             king!!.checkGoOn()
         }, 10, 1)
@@ -34,6 +35,36 @@ class King : JavaPlugin() {
 
     override fun onDisable() {
         // Plugin shutdown logic
+    }
+}
+
+class KingTab{
+    companion object{
+        fun gen(): SmartTabCompleter {
+            return SmartTabCompleter(mutableListOf(
+                TabChain(arrayOf(
+                    TabObject(arrayOf(
+                        "s","start"
+                    ))
+                )),
+                TabChain(arrayOf(
+                    TabObject(arrayOf(
+                        "e","end"
+                    ))
+                )),
+                TabChain(arrayOf(
+                    TabObject(arrayOf(
+                        "c","choice"
+                    )),
+                    TabObject(
+                        arrayOf(
+                            TabPart.selectors,
+                            TabPart.playerSelector
+                        )
+                    )
+                ))
+            ))
+        }
     }
 }
 
