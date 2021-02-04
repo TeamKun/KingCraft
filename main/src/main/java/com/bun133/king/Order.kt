@@ -47,22 +47,40 @@ abstract class OrderBase<E> : Order<E> {
 
     override fun getTimer() = time
 
-    val noticedPlayer = mutableListOf<Player>()
+    val failureNoticed = mutableListOf<Player>()
+    val successNoticed = mutableListOf<Player>()
 
     fun updateNotice() {
-        val list = getNoobs()
-        if (list.size != noticedPlayer.size) {
-            list.removeAll(noticedPlayer)
-            list.forEach {
+        val failure = getNoobs()
+        if (failure.size != failureNoticed.size) {
+            failure.removeAll(failureNoticed)
+            failure.forEach {
                 it.sendTitle(Title("" + ChatColor.RED + "✘" + ChatColor.RESET + "命令に反した"))
-                noticedPlayer.add(it)
+                failureNoticed.add(it)
             }
+        }
+
+        val success = getPros()
+        if (success.size != successNoticed.size) {
+            success.removeAll(successNoticed)
+            success.forEach {
+                it.sendTitle(Title("" + ChatColor.GREEN + "✓" + ChatColor.RESET + "命令に従った"))
+                successNoticed.add(it)
+            }
+        }
+
+        val finalSuccess = getFinalPros()
+        finalSuccess.forEach {
+            it.sendTitle(Title("" + ChatColor.GREEN + "✓" + ChatColor.RESET + "命令を完遂した"))
         }
     }
 
     var result: MutableMap<Player, OrderResult> = mutableMapOf()
     fun updateResults() {
         result = getResults(time <= 0)
+        result.forEach { (player, r) ->
+                println("${player}:${r}")
+            }
     }
 
     override fun onTick(): Boolean {
@@ -115,6 +133,10 @@ abstract class OrderBase<E> : Order<E> {
         return result.filter { it.value === OrderResult.SUCCESS }.map { it.key }.toMutableList()
     }
 
+    fun getFinalPros(): MutableList<Player> {
+        return result.filter { it.value === OrderResult.FINAL_SUCCESS }.map { it.key }.toMutableList()
+    }
+
     fun isPlayerDone(p: Player): OrderResult {
         return result.getOrDefault(p, OrderResult.UNDEFINED)
     }
@@ -133,10 +155,6 @@ class AbstractOrders {
         }
 
         override fun getAll(): ActionStore<Pair<Player, ItemStack>> = Observer.instance.dig
-        override fun onTick(): Boolean {
-            return super.mainTick()
-        }
-
         override fun getResults(isFinalTick: Boolean): MutableMap<Player, OrderResult> {
             val list = mutableMapOf<Player, OrderResult>()
             Bukkit.getOnlinePlayers()
@@ -156,7 +174,7 @@ class AbstractOrders {
                 if (amount >= this.amount) {
                     list[player] = OrderResult.SUCCESS
                 } else {
-                    list[player] = OrderResult.FINAL_SUCCESS
+                    list[player] = OrderResult.PENDING
                 }
             }
 
@@ -255,18 +273,14 @@ class AbstractOrders {
             Observer.instance.death = ActionStore(1)
         }
 
-        override fun onTick(): Boolean {
-            return super.mainTick()
-        }
-
         override fun getResults(isFinalTick: Boolean): MutableMap<Player, OrderResult> {
-            val map = mutableMapOf<Player,OrderResult>()
+            val map = mutableMapOf<Player, OrderResult>()
             Bukkit.getOnlinePlayers()
                 .filter { Observer.isJoined(it) }
                 .forEach {
-                    if(it.world.environment == dimention){
+                    if (it.world.environment == dimention) {
                         map[it] = OrderResult.SUCCESS
-                    }else map[it] = OrderResult.PENDING
+                    } else map[it] = OrderResult.PENDING
                 }
             return map
         }

@@ -48,18 +48,32 @@ class KingCommand() : CommandExecutor {
     }
 
     fun run(sender: Player, command: Command, label: String, args: Array<out String>): Boolean {
-        if (args.size != 1) return false
-        when (args[0]) {
-            "s", "start" -> King.isGoingOn = true
-            "e", "end" -> King.isGoingOn = false
-            "c", "choice" -> {
-                ChoiceInventory(sender).open()
+        if (args.size == 1) {
+            when (args[0]) {
+                "s", "start" -> King.isGoingOn = true
+                "e", "end" -> King.isGoingOn = false
+                "c", "choice" -> {
+                    ChoiceInventory(sender).open()
+                }
+                else -> {
+                    return false
+                }
             }
-            else -> {
-                return false
+            return true
+        } else if (args.size == 2) {
+            if (args[0] == "c" || args[0] == "choice") {
+                val p = Bukkit.selectEntities(sender, args[1])
+                return if (p.isEmpty() || p[0] !is Player) {
+                    sender.sendMessage("Player NotFound!")
+                    false
+                } else {
+                    ChoiceInventory(p[0] as Player).open()
+                    true
+                }
             }
         }
-        return true
+
+        return false
     }
 
     private val goOn = mutableListOf<Order<*>>()
@@ -77,7 +91,8 @@ class KingCommand() : CommandExecutor {
     fun checkGoOn() {
         val list = mutableListOf<Order<*>>()
         goOn.forEach {
-            if (it.onTick()) list.add(it)
+            val b = it.onTick()
+            if (b) list.add(it)
         }
 
         list.forEach { removeGoOn(it) }
@@ -85,7 +100,7 @@ class KingCommand() : CommandExecutor {
 
         if (goOn.size >= 1) {
             Bukkit.getOnlinePlayers().forEach {
-                it.sendActionBar("${goOn[0].getDisplayName()} 残り時間:${goOn[0].getTimer()/20}秒")
+                it.sendActionBar("${goOn[0].getDisplayName()} 残り時間:${goOn[0].getTimer() / 20}秒")
             }
         }
     }
@@ -181,9 +196,9 @@ class ChoiceInventory(p: Player) {
         dim_gui.open()
     }
 
-    fun addCome(e:InventoryClickEvent){
-        if(e.currentItem == null) return
-        when(e.currentItem!!.type){
+    fun addCome(e: InventoryClickEvent) {
+        if (e.currentItem == null) return
+        when (e.currentItem!!.type) {
             Material.GRASS_BLOCK -> King.king!!.addGoOn(AbstractOrders.BeDim(World.Environment.NORMAL), King.time * 2)
             Material.NETHERRACK -> King.king!!.addGoOn(AbstractOrders.BeDim(World.Environment.NETHER), King.time * 2)
             Material.END_STONE -> King.king!!.addGoOn(AbstractOrders.BeDim(World.Environment.THE_END), King.time * 2)
