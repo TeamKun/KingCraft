@@ -69,18 +69,20 @@ abstract class OrderBase<E> : Order<E> {
             }
         }
 
-        val finalSuccess = getFinalPros()
-        finalSuccess.forEach {
-            it.sendTitle(Title("" + ChatColor.GREEN + "✓" + ChatColor.RESET + "命令を完遂した"))
+        if(time <= 0){
+            val finalSuccess = getFinalPros()
+            finalSuccess.forEach {
+                it.sendTitle(Title("" + ChatColor.GREEN + "✓" + ChatColor.RESET + "命令を完遂した"))
+            }
         }
     }
 
     var result: MutableMap<Player, OrderResult> = mutableMapOf()
     fun updateResults() {
         result = getResults(time <= 0)
-        result.forEach { (player, r) ->
-                println("${player}:${r}")
-            }
+//        result.forEach { (player, r) ->
+//                println("${player}:${r}")
+//            }
     }
 
     override fun onTick(): Boolean {
