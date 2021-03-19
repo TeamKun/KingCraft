@@ -8,5 +8,3 @@ commands:
   king:
     description: This is main command of king Game
     usage: /<command> <s/start/e/end>
-    permission: op
-    permission-message: You don't have enough permission!

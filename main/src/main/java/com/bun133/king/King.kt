@@ -4,6 +4,7 @@ import com.bun133.king.flylib.*
 import com.destroystokyo.paper.Title
 import com.flylib.util.NaturalNumber
 import org.bukkit.Bukkit
+import org.bukkit.ChatColor
 import org.bukkit.Material
 import org.bukkit.World
 import org.bukkit.command.Command
@@ -18,15 +19,18 @@ class King : JavaPlugin() {
     companion object {
         var isGoingOn = false
         var king: KingCommand? = null
-        const val time = 20 * 20
+        val kingPlayers = mutableListOf<Player>()
     }
 
+    lateinit var configManager: KingConfig
 
     override fun onEnable() {
         FlyLib(this)
         // Plugin startup logic
         server.pluginManager.registerEvents(Observer.instance, this)
-        king = KingCommand()
+        saveDefaultConfig()
+        configManager = KingConfig(this)
+        king = KingCommand(this)
         getCommand("king")!!.setExecutor(king)
         getCommand("king")!!.tabCompleter = KingTab.gen()
         server.scheduler.runTaskTimer(this, Runnable {
@@ -67,7 +71,29 @@ class KingTab {
     }
 }
 
-class KingCommand() : CommandExecutor {
+class KingConfig(plugin: King) {
+
+//    private fun getPlayer(s: String): Player? {
+//        println("Players:${Bukkit.getOnlinePlayers().toTypedArray().contentToString()}")
+//        return Bukkit.getOnlinePlayers().filter { it.displayName === s }.getOrNull(0)
+//    }
+//
+//    init {
+//        val s = plugin.config.getStringList("DefaultKing")
+//        s.forEach { println("DefaultKingString:${it}") }
+//        val p = s.map { getPlayer(it) }
+//        println("Matched:${p.toTypedArray().contentToString()}")
+//        p.filterNotNull()
+//            .forEach { King.kingPlayers.add(it); println("DefaultKing:${it.displayName}")}
+//    }
+
+    val digTime = plugin.config.getInt("Orders.Dig.Time")
+    val moveTime = plugin.config.getInt("Orders.Move.Time")
+    val noDeathTime = plugin.config.getInt("Orders.NoDeath.Time")
+    val comeTime = plugin.config.getInt("Orders.Come.Time")
+}
+
+class KingCommand(val plugin: King) : CommandExecutor {
     override fun onCommand(sender: CommandSender, command: Command, label: String, args: Array<out String>): Boolean {
         if (sender is Player) {
             if (sender.isOp) {
@@ -86,10 +112,11 @@ class KingCommand() : CommandExecutor {
                 }
                 "e", "end" -> {
                     King.isGoingOn = false
+                    goOn.forEach { it.setTimer(OrderBase.forceEnd) }
                     Bukkit.getOnlinePlayers().forEach { it.sendTitle(Title("ゲーム終了")) }
                 }
                 "c", "choice" -> {
-                    ChoiceInventory(sender).open()
+                        ChoiceInventory(sender, plugin).open()
                 }
                 else -> {
                     return false
@@ -97,14 +124,16 @@ class KingCommand() : CommandExecutor {
             }
             return true
         } else if (args.size == 2) {
-            if (args[0] == "c" || args[0] == "choice") {
-                val p = Bukkit.selectEntities(sender, args[1])
-                return if (p.isEmpty() || p[0] !is Player) {
-                    sender.sendMessage("Player NotFound!")
-                    false
-                } else {
-                    ChoiceInventory(p[0] as Player).open()
-                    true
+            when (args[0]) {
+                "c", "choice" -> {
+                    val p = Bukkit.selectEntities(sender, args[1])
+                    return if (p.isEmpty() || p[0] !is Player) {
+                        sender.sendMessage("Player NotFound!")
+                        false
+                    } else {
+                            ChoiceInventory(p[0] as Player, plugin).open()
+                            return true
+                    }
                 }
             }
         }
@@ -114,8 +143,8 @@ class KingCommand() : CommandExecutor {
 
     private val goOn = mutableListOf<Order<*>>()
 
-    fun addGoOn(o: Order<*>, time: Int) {
-        o.setTimer(time)
+    fun addGoOn(o: Order<*>) {
+        o.setTimer(o.getDefaultTime())
         o.onStart()
         goOn.add(o)
     }
@@ -131,8 +160,8 @@ class KingCommand() : CommandExecutor {
             if (b) list.add(it)
         }
 
-        list.forEach { removeGoOn(it) }
         //強引
+        list.forEach { removeGoOn(it) }
 
         if (goOn.size >= 1) {
             Bukkit.getOnlinePlayers().forEach {
@@ -142,7 +171,7 @@ class KingCommand() : CommandExecutor {
     }
 }
 
-class ChoiceInventory(p: Player) {
+class ChoiceInventory(p: Player, val plugin: King) {
     val gui = ChestGUI(p, NaturalNumber(4), "命令一覧")
 
     init {
@@ -187,19 +216,19 @@ class ChoiceInventory(p: Player) {
 
     fun chooseDig(stack: MutableList<ItemStack>) {
         stack.filter { it.type.isBlock }.forEach {
-            King.king!!.addGoOn(AbstractOrders.Dig(it.type, it.amount), King.time)
+            King.king!!.addGoOn(AbstractOrders.Dig(it.type, it.amount, plugin.configManager.digTime))
         }
 
         King.isGoingOn = true
     }
 
     fun move(e: InventoryClickEvent) {
-        King.king!!.addGoOn(AbstractOrders.Move(), King.time)
+        King.king!!.addGoOn(AbstractOrders.Move(plugin.configManager.moveTime))
         (e.whoClicked as Player).closeInventory()
     }
 
     fun noDeath(e: InventoryClickEvent) {
-        King.king!!.addGoOn(AbstractOrders.NotDeath(), King.time)
+        King.king!!.addGoOn(AbstractOrders.NotDeath(plugin.configManager.noDeathTime))
         (e.whoClicked as Player).closeInventory()
     }
 
@@ -235,9 +264,24 @@ class ChoiceInventory(p: Player) {
     fun addCome(e: InventoryClickEvent) {
         if (e.currentItem == null) return
         when (e.currentItem!!.type) {
-            Material.GRASS_BLOCK -> King.king!!.addGoOn(AbstractOrders.BeDim(World.Environment.NORMAL), King.time * 2)
-            Material.NETHERRACK -> King.king!!.addGoOn(AbstractOrders.BeDim(World.Environment.NETHER), King.time * 2)
-            Material.END_STONE -> King.king!!.addGoOn(AbstractOrders.BeDim(World.Environment.THE_END), King.time * 2)
+            Material.GRASS_BLOCK -> King.king!!.addGoOn(
+                AbstractOrders.BeDim(
+                    World.Environment.NORMAL,
+                    plugin.configManager.comeTime
+                )
+            )
+            Material.NETHERRACK -> King.king!!.addGoOn(
+                AbstractOrders.BeDim(
+                    World.Environment.NETHER,
+                    plugin.configManager.comeTime
+                )
+            )
+            Material.END_STONE -> King.king!!.addGoOn(
+                AbstractOrders.BeDim(
+                    World.Environment.THE_END,
+                    plugin.configManager.comeTime
+                )
+            )
             else -> return
         }
         (e.whoClicked as Player).closeInventory()

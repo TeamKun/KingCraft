@@ -39,7 +39,7 @@
                                     <type>${project.packaging}</type>
                                 </artifactItem>
                             </artifactItems>
-                            <outputDirectory>./server/plugins</outputDirectory>
+                            <outputDirectory>./server/King/plugins</outputDirectory>
                         </configuration>
                     </execution>
                 </executions>

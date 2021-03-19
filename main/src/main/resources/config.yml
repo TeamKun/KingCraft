@@ -1,0 +1,9 @@
+Orders:
+  Dig:
+    Time: 400
+  Move:
+    Time: 400
+  NoDeath:
+    Time: 400
+  Come:
+    Time: 400

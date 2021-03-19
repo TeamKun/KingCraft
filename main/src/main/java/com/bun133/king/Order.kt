@@ -20,6 +20,7 @@ interface Order<E> {
     fun onTick(): Boolean
     fun setTimer(i: Int)
     fun getTimer(): Int
+    fun getDefaultTime(): Int
 }
 
 /**
@@ -32,14 +33,15 @@ enum class OrderResult {
     PENDING, FAILURE, SUCCESS, UNDEFINED, FINAL_SUCCESS
 }
 
-abstract class OrderBase<E> : Order<E> {
+abstract class OrderBase<E>(val defTime: Int) : Order<E> {
     init {
         Events.PlayerDeathEvent.register(::onDeath)
     }
 
 
     companion object {
-        const val TimeUP = -1114
+//        const val TimeUP = -1114
+        const val forceEnd = -55484
     }
 
     var time: Int = 0
@@ -51,6 +53,11 @@ abstract class OrderBase<E> : Order<E> {
     val successNoticed = mutableListOf<Player>()
 
     fun updateNotice() {
+        if(time <= forceEnd){
+            //ForceEnd
+            return
+        }
+
         val failure = getNoobs()
         if (failure.size != failureNoticed.size) {
             failure.removeAll(failureNoticed)
@@ -69,7 +76,7 @@ abstract class OrderBase<E> : Order<E> {
             }
         }
 
-        if(time <= 0){
+        if (time <= 0) {
             val finalSuccess = getFinalPros()
             finalSuccess.forEach {
                 it.sendTitle(Title("" + ChatColor.GREEN + "✓" + ChatColor.RESET + "命令を完遂した"))
@@ -97,16 +104,19 @@ abstract class OrderBase<E> : Order<E> {
                 println("時間切れ!!!!")
                 killAll()
                 isTimerMoving = false
+                time = 0
                 return true
             }
             time -= 1
+            return false
+        } else {
+            return true
         }
-        return false
     }
 
     override fun setTimer(i: Int) {
         time = i
-        isTimerMoving = true
+        isTimerMoving = i >= 0
     }
 
     override fun killAll() {
@@ -121,7 +131,7 @@ abstract class OrderBase<E> : Order<E> {
     fun onDeath(e: Event) {
         if (e is PlayerDeathEvent) {
             if (killedPlayers.contains(e.entity)) {
-                e.deathMessage = "${e.entity.displayName}は${getDisplayName()}という命令を守らなかってので死んでしまった"
+                e.deathMessage = "${e.entity.displayName}は${getDisplayName()}という命令を守らなかったので死んでしまった"
                 killedPlayers.remove(e.entity)
             }
         }
@@ -144,13 +154,14 @@ abstract class OrderBase<E> : Order<E> {
     }
 
     abstract fun getResults(isFinalTick: Boolean): MutableMap<Player, OrderResult>
+    override fun getDefaultTime(): Int = defTime
 }
 
 class AbstractOrders {
     /**
      * 指定されたブロック掘るやつ
      */
-    class Dig(var material: Material, var amount: Int) : OrderBase<Pair<Player, ItemStack>>() {
+    class Dig(var material: Material, var amount: Int, defTime: Int) : OrderBase<Pair<Player, ItemStack>>(defTime) {
         override fun getDisplayName(): String = "${material.key.key}を${amount}個掘れ!"
         override fun onStart() {
             Observer.instance.dig = ActionStore(Observer.store_size)
@@ -187,7 +198,7 @@ class AbstractOrders {
     /**
      * Moveといいつつ、動いちゃダメな奴
      */
-    class Move() : OrderBase<PlayerMoveEvent>() {
+    class Move(defTime: Int) : OrderBase<PlayerMoveEvent>(defTime) {
         override fun getAll(): ActionStore<PlayerMoveEvent> = Observer.instance.move
         override fun getDisplayName(): String = "動くな!"
         override fun onStart() {
@@ -220,7 +231,7 @@ class AbstractOrders {
     /**
      * 死んじゃいけないやつ
      */
-    class NotDeath() : OrderBase<PlayerDeathEvent>() {
+    class NotDeath(defTime: Int) : OrderBase<PlayerDeathEvent>(defTime) {
         override fun getAll(): ActionStore<PlayerDeathEvent> = Observer.instance.death
         override fun getDisplayName(): String = "死ぬな!"
         override fun onStart() {
@@ -246,7 +257,7 @@ class AbstractOrders {
     /**
      * 死なないといけないやつ
      */
-    class Death() : OrderBase<PlayerDeathEvent>() {
+    class Death(defTime: Int) : OrderBase<PlayerDeathEvent>(defTime) {
         override fun getAll(): ActionStore<PlayerDeathEvent> = Observer.instance.death
         override fun getDisplayName(): String = "(これ考え中)!"
         override fun onStart() {
@@ -268,7 +279,7 @@ class AbstractOrders {
     /**
      * 特定ディメンションにいないといけないやつ
      */
-    class BeDim(var dimention: World.Environment) : OrderBase<Empty>() {
+    class BeDim(var dimention: World.Environment, defTime: Int) : OrderBase<Empty>(defTime) {
         override fun getAll(): ActionStore<Empty> = Observer.instance.empty
         override fun getDisplayName(): String = "${dimention.displayName()}に行け!"
         override fun onStart() {
@@ -291,7 +302,7 @@ class AbstractOrders {
     /**
      * 特定の場所に行かなきゃいけないやつ
      */
-    class Come(var loc: Location) : OrderBase<PlayerMoveEvent>() {
+    class Come(var loc: Location, defTime: Int) : OrderBase<PlayerMoveEvent>(defTime) {
         override fun getAll(): ActionStore<PlayerMoveEvent> = Observer.instance.move
         override fun getDisplayName(): String = "X:${loc.blockX} Y:${loc.blockY} Z:${loc.blockZ}まで行け!"
         override fun onStart() {
@@ -302,6 +313,5 @@ class AbstractOrders {
             // TODO
             return mutableMapOf()
         }
-
     }
 }
