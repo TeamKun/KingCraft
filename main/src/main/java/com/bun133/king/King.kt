@@ -1,6 +1,7 @@
 package com.bun133.king
 
 import com.bun133.king.flylib.*
+import com.destroystokyo.paper.Title
 import com.flylib.util.NaturalNumber
 import org.bukkit.Bukkit
 import org.bukkit.Material
@@ -38,32 +39,30 @@ class King : JavaPlugin() {
     }
 }
 
-class KingTab{
-    companion object{
+class KingTab {
+    companion object {
         fun gen(): SmartTabCompleter {
-            return SmartTabCompleter(mutableListOf(
-                TabChain(arrayOf(
-                    TabObject(arrayOf(
-                        "s","start"
-                    ))
-                )),
-                TabChain(arrayOf(
-                    TabObject(arrayOf(
-                        "e","end"
-                    ))
-                )),
-                TabChain(arrayOf(
-                    TabObject(arrayOf(
-                        "c","choice"
-                    )),
+            return SmartTabCompleter(
+                TabChain(
                     TabObject(
-                        arrayOf(
-                            TabPart.selectors,
-                            TabPart.playerSelector
-                        )
+                        "s", "start"
                     )
-                ))
-            ))
+                ),
+                TabChain(
+                    TabObject(
+                        "e", "end"
+                    )
+                ),
+                TabChain(
+                    TabObject(
+                        "c", "choice"
+                    ),
+                    TabObject(
+                        TabPart.selectors,
+                        TabPart.playerSelector
+                    )
+                )
+            )
         }
     }
 }
@@ -81,8 +80,14 @@ class KingCommand() : CommandExecutor {
     fun run(sender: Player, command: Command, label: String, args: Array<out String>): Boolean {
         if (args.size == 1) {
             when (args[0]) {
-                "s", "start" -> King.isGoingOn = true
-                "e", "end" -> King.isGoingOn = false
+                "s", "start" -> {
+                    King.isGoingOn = true
+                    Bukkit.getOnlinePlayers().forEach { it.sendTitle(Title("ゲーム開始", "言いなりにならねば殺される")) }
+                }
+                "e", "end" -> {
+                    King.isGoingOn = false
+                    Bukkit.getOnlinePlayers().forEach { it.sendTitle(Title("ゲーム終了")) }
+                }
                 "c", "choice" -> {
                     ChoiceInventory(sender).open()
                 }
