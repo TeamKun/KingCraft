@@ -65,6 +65,10 @@ class KingTab {
                         TabPart.selectors,
                         TabPart.playerSelector
                     )
+                ),
+                TabChain(
+                    TabObject("set"),
+                    TabObject(TabPart.selectors, TabPart.playerSelector)
                 )
             )
         }
@@ -116,7 +120,35 @@ class KingCommand(val plugin: King) : CommandExecutor {
                     Bukkit.getOnlinePlayers().forEach { it.sendTitle(Title("ゲーム終了")) }
                 }
                 "c", "choice" -> {
+                    if (King.kingPlayers.contains(sender)) {
                         ChoiceInventory(sender, plugin).open()
+                    } else {
+                        sender.sendMessage("You are not King!")
+                    }
+                }
+                "set" -> {
+                    if (sender.isOp) {
+                        if (King.kingPlayers.contains(sender)) {
+                            sender.sendMessage("You are no longer King!")
+                            King.kingPlayers.remove(sender)
+                            return true
+                        } else {
+                            sender.sendMessage("You became a King!")
+                            Bukkit.getOnlinePlayers().forEach {
+                                it.sendTitle(
+                                    Title(
+                                        "新しい王様だ!",
+                                        "" + ChatColor.GOLD + sender.displayName + ChatColor.RESET + "が新しい王様だ"
+                                    )
+                                )
+                            }
+                            King.kingPlayers.add(sender)
+                            return true
+                        }
+                    } else {
+                        sender.sendMessage("You don't have enough perm!")
+                        return true
+                    }
                 }
                 else -> {
                     return false
@@ -131,8 +163,42 @@ class KingCommand(val plugin: King) : CommandExecutor {
                         sender.sendMessage("Player NotFound!")
                         false
                     } else {
+                        if (King.kingPlayers.contains(p[0])) {
                             ChoiceInventory(p[0] as Player, plugin).open()
                             return true
+                        } else {
+                            sender.sendMessage("${(p[0] as Player).displayName} isn't King!")
+                            return false
+                        }
+                    }
+                }
+                "set" -> {
+                    val p = Bukkit.selectEntities(sender, args[1])
+                    if (p.isEmpty() || p[0] !is Player) {
+                        sender.sendMessage("Player NotFound!")
+                        return false
+                    } else {
+                        val player: Player = p[0] as Player
+                        if (King.kingPlayers.contains(player)) {
+                            sender.sendMessage("${player.displayName} are no longer King!")
+                            player.sendMessage("You are no longer King!")
+                            King.kingPlayers.remove(player)
+                            return true
+                        } else {
+                            sender.sendMessage("${player.displayName} became a King!")
+                            player.sendMessage("You became a King!")
+                            Bukkit.getOnlinePlayers()
+                                .forEach {
+                                    it.sendTitle(
+                                        Title(
+                                            "新しい王様だ!",
+                                            "" + ChatColor.GOLD + player.displayName + ChatColor.RESET + "が新しい王様だ"
+                                        )
+                                    )
+                                }
+                            King.kingPlayers.add(player)
+                            return true
+                        }
                     }
                 }
             }
@@ -172,6 +238,15 @@ class KingCommand(val plugin: King) : CommandExecutor {
 }
 
 class ChoiceInventory(p: Player, val plugin: King) {
+    init {
+        // 自動的に開始されるように
+        if (!King.isGoingOn) {
+            King.isGoingOn = true
+            Bukkit.broadcastMessage("Auto Enabled!")
+        }
+    }
+
+
     val gui = ChestGUI(p, NaturalNumber(4), "命令一覧")
 
     init {
@@ -218,8 +293,6 @@ class ChoiceInventory(p: Player, val plugin: King) {
         stack.filter { it.type.isBlock }.forEach {
             King.king!!.addGoOn(AbstractOrders.Dig(it.type, it.amount, plugin.configManager.digTime))
         }
-
-        King.isGoingOn = true
     }
 
     fun move(e: InventoryClickEvent) {
