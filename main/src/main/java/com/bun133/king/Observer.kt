@@ -11,7 +11,7 @@ import org.bukkit.inventory.ItemStack
 
 class Observer : Listener {
     companion object {
-        fun isJoined(p: Player) = p.gameMode === GameMode.SURVIVAL
+        fun isJoined(p: Player) = p.gameMode === GameMode.SURVIVAL && !King.kingPlayers.contains(p)
         const val store_size: Int = 1000
         val instance = Observer()
     }
