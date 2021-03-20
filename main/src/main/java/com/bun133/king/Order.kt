@@ -305,7 +305,7 @@ class AbstractOrders {
                 .forEach {
                     if (it.world.environment == dimention) {
                         map[it] = OrderResult.SUCCESS
-                    } else map[it] = OrderResult.PENDING
+                    } else map[it] = OrderResult.FINAL_FAILURE
                 }
             return map
         }
