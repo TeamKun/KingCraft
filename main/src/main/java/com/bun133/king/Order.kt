@@ -28,9 +28,10 @@ interface Order<E> {
  * FAILURE - 失敗
  * SUCCESS - 成功
  * FINAL_SUCCESS - 最終Tickにおいて成功(それ以外のTickにおいてはPendingと同じ)
+ * FINAL_FAILURE - 最終Tickにおいて失敗(それ以外のTickにおいてはPendingと同じ)
  */
 enum class OrderResult {
-    PENDING, FAILURE, SUCCESS, UNDEFINED, FINAL_SUCCESS
+    PENDING, FAILURE, SUCCESS, UNDEFINED, FINAL_SUCCESS , FINAL_FAILURE
 }
 
 abstract class OrderBase<E>(val defTime: Int) : Order<E> {
@@ -40,7 +41,7 @@ abstract class OrderBase<E>(val defTime: Int) : Order<E> {
 
 
     companion object {
-//        const val TimeUP = -1114
+        //        const val TimeUP = -1114
         const val forceEnd = -55484
     }
 
@@ -53,7 +54,7 @@ abstract class OrderBase<E>(val defTime: Int) : Order<E> {
     val successNoticed = mutableListOf<Player>()
 
     fun updateNotice() {
-        if(time <= forceEnd){
+        if (time <= forceEnd) {
             //ForceEnd
             return
         }
@@ -80,6 +81,13 @@ abstract class OrderBase<E>(val defTime: Int) : Order<E> {
             val finalSuccess = getFinalPros()
             finalSuccess.forEach {
                 it.sendTitle(Title("" + ChatColor.GREEN + "✓" + ChatColor.RESET + "命令を完遂した"))
+            }
+
+            val finalNoobs = getFinalNoobs()
+            finalNoobs.forEach {
+                it.sendTitle(Title("" + ChatColor.RED + "✘" + ChatColor.RESET + "命令に反した"))
+                killedPlayers.add(it)
+                it.health = 0.0
             }
         }
     }
@@ -149,6 +157,10 @@ abstract class OrderBase<E>(val defTime: Int) : Order<E> {
         return result.filter { it.value === OrderResult.FINAL_SUCCESS }.map { it.key }.toMutableList()
     }
 
+    fun getFinalNoobs(): MutableList<Player> {
+        return result.filter { it.value === OrderResult.FINAL_FAILURE }.map { it.key }.toMutableList()
+    }
+
     fun isPlayerDone(p: Player): OrderResult {
         return result.getOrDefault(p, OrderResult.UNDEFINED)
     }
@@ -172,7 +184,7 @@ class AbstractOrders {
             val list = mutableMapOf<Player, OrderResult>()
             Bukkit.getOnlinePlayers()
                 .filter { Observer.isJoined(it) }
-                .forEach { list[it] = OrderResult.UNDEFINED }
+                .forEach { list[it] = OrderResult.FINAL_FAILURE }
 
             val map = mutableMapOf<Player, Int>()
 
