@@ -448,7 +448,6 @@ class ChoiceInventory(p: Player, val plugin: King) {
 
         val mob_name = stack.type.name.replace("_SPAWN_EGG","").toLowerCase()
         val entityType = EntityType.fromName(mob_name)
-        println("EntityType:${entityType?.name}")
         return entityType
     }
 }
