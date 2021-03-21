@@ -5,6 +5,7 @@ import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.block.BlockBreakEvent
+import org.bukkit.event.entity.EntityDeathEvent
 import org.bukkit.event.entity.PlayerDeathEvent
 import org.bukkit.event.player.PlayerMoveEvent
 import org.bukkit.inventory.ItemStack
@@ -16,48 +17,63 @@ class Observer : Listener {
         val instance = Observer()
     }
 
-    var dig:ActionStore<Pair<Player,ItemStack>> = ActionStore(store_size)
+    var dig: ActionStore<Pair<Player, ItemStack>> = ActionStore(store_size)
+
     @EventHandler
     fun onDig(e: BlockBreakEvent) {
-        if(!King.isGoingOn) return
-        if(isJoined(e.player)){
-            dig.add(Pair(e.player, ItemStack(e.block.type,1)))
+        if (!King.isGoingOn) return
+        if (isJoined(e.player)) {
+            dig.add(Pair(e.player, ItemStack(e.block.type, 1)))
         }
     }
 
-    var move:ActionStore<PlayerMoveEvent> = ActionStore(store_size * 3)
+    var move: ActionStore<PlayerMoveEvent> = ActionStore(store_size * 3)
+
     @EventHandler
     fun onMove(e: PlayerMoveEvent) {
-        if(!King.isGoingOn) return
-        if(isJoined(e.player)){
+        if (!King.isGoingOn) return
+        if (isJoined(e.player)) {
             move.add(e)
         }
     }
 
-    var death:ActionStore<PlayerDeathEvent> = ActionStore(store_size / 2)
+    var death: ActionStore<PlayerDeathEvent> = ActionStore(store_size / 2)
+
     @EventHandler
     fun onDeath(e: PlayerDeathEvent) {
-        if(!King.isGoingOn) return
-        if(isJoined(e.entity)){
+        if (!King.isGoingOn) return
+        if (isJoined(e.entity)) {
             death.add(e)
         }
     }
 
-    var empty:ActionStore<Empty> = ActionStore(1)
+    var kill: ActionStore<EntityDeathEvent> = ActionStore(store_size * 2)
+
+    @EventHandler
+    fun onKill(e: EntityDeathEvent) {
+        if (!King.isGoingOn) return
+        if (e.entity.killer != null) {
+            if (isJoined(e.entity.killer!!)) {
+                kill.add(e)
+            }
+        }
+    }
+
+    var empty: ActionStore<Empty> = ActionStore(1)
 }
 
-class ActionStore<E>(val size:Int){
+class ActionStore<E>(val size: Int) {
     var actions = mutableListOf<E>()
         private set
 
     private var index = 0
 
-    fun add(entry:E){
+    fun add(entry: E) {
         actions.add(entry)
 //        if(actions.size > size) actions.removeAt(0)
     }
 
-    fun get(index:Int):E?{
+    fun get(index: Int): E? {
         return actions.getOrNull(index)
     }
 

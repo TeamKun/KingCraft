@@ -4,8 +4,10 @@ import com.bun133.king.flylib.Events
 import com.bun133.king.flylib.displayName
 import com.destroystokyo.paper.Title
 import org.bukkit.*
+import org.bukkit.entity.EntityType
 import org.bukkit.entity.Player
 import org.bukkit.event.Event
+import org.bukkit.event.entity.EntityDeathEvent
 import org.bukkit.event.entity.PlayerDeathEvent
 import org.bukkit.event.player.PlayerMoveEvent
 import org.bukkit.inventory.ItemStack
@@ -340,7 +342,7 @@ class AbstractOrders {
         override fun getResults(isFinalTick: Boolean): MutableMap<Player, OrderResult> {
             val list = mutableMapOf<Player, OrderResult>()
             Bukkit.getOnlinePlayers().filter { Observer.isJoined(it) }.forEach { list[it] = OrderResult.FINAL_FAILURE }
-            getAll().actions.forEach { if(getMaterial(it) === material) list[it.player] = OrderResult.SUCCESS }
+            getAll().actions.forEach { if (getMaterial(it) === material) list[it.player] = OrderResult.SUCCESS }
             // 負の遺産
 //            val eventlist = mutableMapOf<Player,MutableList<Material>>()
 //            getAll().actions
@@ -365,6 +367,36 @@ class AbstractOrders {
             val loc = e.player.location.add(0.0, -0.75, 0.0)
             val b = loc.block.type === material
             return loc.block.type
+        }
+    }
+
+    class Kill(val entityType: EntityType, val amount: Int, defTime: Int) : OrderBase<EntityDeathEvent>(defTime) {
+        override fun getAll(): ActionStore<EntityDeathEvent> = Observer.instance.kill
+        override fun getDisplayName(): String = "${entityType.name}を${amount}体殺せ!"
+        override fun onStart() {
+            Observer.instance.kill = ActionStore(Observer.store_size * 2)
+        }
+
+        override fun getResults(isFinalTick: Boolean): MutableMap<Player, OrderResult> {
+            val list = mutableMapOf<Player, OrderResult>()
+            val count = mutableMapOf<Player, Int>()
+            Bukkit.getOnlinePlayers().filter { Observer.isJoined(it) }.forEach { list[it] = OrderResult.FINAL_FAILURE }
+            getAll().actions.forEach {
+                if (it.entityType === entityType) {
+                    if(!count.containsKey(it.entity.killer!!)) count[it.entity.killer!!] = 0
+                    count[it.entity.killer!!] = count[it.entity.killer!!]!! + 1
+                }
+            }
+
+            count.forEach { (player, c) ->
+                if(c>=amount){
+                    list[player] = OrderResult.SUCCESS
+                }else{
+                    list[player] = OrderResult.FINAL_FAILURE
+                }
+            }
+
+            return list
         }
     }
 }

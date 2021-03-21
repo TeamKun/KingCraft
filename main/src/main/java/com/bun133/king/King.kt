@@ -10,10 +10,14 @@ import org.bukkit.World
 import org.bukkit.command.Command
 import org.bukkit.command.CommandExecutor
 import org.bukkit.command.CommandSender
+import org.bukkit.entity.Egg
+import org.bukkit.entity.EntityType
 import org.bukkit.entity.Player
 import org.bukkit.event.inventory.InventoryClickEvent
 import org.bukkit.inventory.ItemStack
+import org.bukkit.inventory.meta.SpawnEggMeta
 import org.bukkit.plugin.java.JavaPlugin
+import org.jetbrains.annotations.Nullable
 
 class King : JavaPlugin() {
     companion object {
@@ -96,6 +100,7 @@ class KingConfig(plugin: King) {
     val noDeathTime = plugin.config.getInt("Orders.NoDeath.Time")
     val comeTime = plugin.config.getInt("Orders.Come.Time")
     val placeChooseTime = plugin.config.getInt("Orders.PlaceChooseYou.Time")
+    val killTime = plugin.config.getInt("Orders.Kill.Time")
 }
 
 class KingCommand(val plugin: King) : CommandExecutor {
@@ -265,12 +270,23 @@ class ChoiceInventory(p: Player, val plugin: King) {
             ).addCallBack(::move)
         )
 
+        // ただ負荷がかかるだけのクソモードなので削除
+        /*
         gui.addGUIObject(
             GUIObject(
                 NaturalNumber(3), NaturalNumber(1),
                 EasyItemBuilder.genItem(Material.CHEST, "死ぬな!")
             ).addCallBack(::noDeath)
         )
+        */
+
+        gui.addGUIObject(
+            GUIObject(
+                NaturalNumber(3), NaturalNumber(1),
+                EasyItemBuilder.genItem(Material.CHEST, "倒せ!")
+            ).addCallBack(::kill)
+        )
+
 
         gui.addGUIObject(
             GUIObject(
@@ -379,5 +395,60 @@ class ChoiceInventory(p: Player, val plugin: King) {
             .forEach {
                 King.king!!.addGoOn(AbstractOrders.PlaceChooseYou(it.type, plugin.configManager.placeChooseTime))
             }
+    }
+
+    fun kill(e: InventoryClickEvent) {
+        val egg_gui = DropChestGUI("殺させるMOB選択(卵をいれる)", e.whoClicked as Player)
+        (e.whoClicked as Player).closeInventory()
+        egg_gui.register(::addKill).open()
+    }
+
+    fun addKill(stack: MutableList<ItemStack>) {
+        stack
+            .filter { println("isEgg:${isEgg(it)}");isEgg(it) }
+            .map { Pair(it.amount, getEntityType(it)) }
+            .filter { it.second != null }
+            .forEach { King.king!!.addGoOn(AbstractOrders.Kill(it.second!!, it.first, plugin.configManager.killTime)) }
+    }
+
+    fun isEgg(stack: ItemStack): Boolean {
+        return stack.itemMeta is SpawnEggMeta
+    }
+
+    fun getEntityType(stack:ItemStack): EntityType? {
+//        when(stack.type){
+//            Material.BEE_SPAWN_EGG -> EntityType.BEE
+//            Material.BLAZE_SPAWN_EGG -> EntityType.BLAZE
+//            Material.CAVE_SPIDER_SPAWN_EGG -> EntityType.CAVE_SPIDER
+//            Material.CREEPER_SPAWN_EGG -> EntityType.CREEPER
+//            Material.DOLPHIN_SPAWN_EGG -> EntityType.DOLPHIN
+//            Material.DROWNED_SPAWN_EGG -> EntityType.DROWNED
+//            Material.ELDER_GUARDIAN_SPAWN_EGG -> EntityType.ELDER_GUARDIAN
+//            Material.ENDERMAN_SPAWN_EGG -> EntityType.ENDERMAN
+//            Material.ENDERMITE_SPAWN_EGG -> EntityType.ENDERMITE
+//            Material.EVOKER_SPAWN_EGG -> EntityType.EVOKER
+//            Material.FOX_SPAWN_EGG -> EntityType.FOX
+//            Material.GHAST_SPAWN_EGG -> EntityType.GHAST
+//            Material.GUARDIAN_SPAWN_EGG -> EntityType.GUARDIAN
+//            Material.HUSK_SPAWN_EGG -> EntityType.HUSK
+//            Material.LLAMA_SPAWN_EGG -> EntityType.LLAMA
+//            Material.MAGMA_CUBE_SPAWN_EGG -> EntityType.MAGMA_CUBE
+//            Material.PANDA_SPAWN_EGG -> EntityType.PANDA
+//            Material.PHANTOM_SPAWN_EGG -> EntityType.PHANTOM
+//            Material.PILLAGER_SPAWN_EGG -> EntityType.PILLAGER
+//            Material.POLAR_BEAR_SPAWN_EGG -> EntityType.POLAR_BEAR
+//            Material.MOOSHROOM_SPAWN_EGG -> EntityType.RAVAGER
+//
+//
+//            Material.BAT_SPAWN_EGG -> EntityType.BAT
+//            Material.CAT_SPAWN_EGG -> EntityType.CAT
+//            Material.CHICKEN_SPAWN_EGG -> EntityType.CHICKEN
+//            Material.DONKEY_SPAWN_EGG -> EntityType.DONKEY
+//        }
+
+        val mob_name = stack.type.name.replace("_SPAWN_EGG","").toLowerCase()
+        val entityType = EntityType.fromName(mob_name)
+        println("EntityType:${entityType?.name}")
+        return entityType
     }
 }
