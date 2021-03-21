@@ -9,6 +9,7 @@ import org.bukkit.event.Event
 import org.bukkit.event.entity.PlayerDeathEvent
 import org.bukkit.event.player.PlayerMoveEvent
 import org.bukkit.inventory.ItemStack
+import org.jetbrains.annotations.NotNull
 
 interface Order<E> {
     fun getAll(): ActionStore<E>
@@ -31,7 +32,7 @@ interface Order<E> {
  * FINAL_FAILURE - 最終Tickにおいて失敗(それ以外のTickにおいてはPendingと同じ)
  */
 enum class OrderResult {
-    PENDING, FAILURE, SUCCESS, UNDEFINED, FINAL_SUCCESS , FINAL_FAILURE
+    PENDING, FAILURE, SUCCESS, UNDEFINED, FINAL_SUCCESS, FINAL_FAILURE
 }
 
 abstract class OrderBase<E>(val defTime: Int) : Order<E> {
@@ -50,8 +51,8 @@ abstract class OrderBase<E>(val defTime: Int) : Order<E> {
 
     override fun getTimer() = time
 
-    val failureNoticed = mutableListOf<Player>()
-    val successNoticed = mutableListOf<Player>()
+    private val failureNoticed = mutableListOf<Player>()
+    private val successNoticed = mutableListOf<Player>()
 
     fun updateNotice() {
         if (time <= forceEnd) {
@@ -78,16 +79,17 @@ abstract class OrderBase<E>(val defTime: Int) : Order<E> {
         }
 
         if (time <= 0) {
-            val finalSuccess = getFinalPros()
+            val finalSuccess = getFinalPros().filter { !successNoticed.contains(it) && !failureNoticed.contains(it) }
             finalSuccess.forEach {
                 it.sendTitle(Title("" + ChatColor.GREEN + "✓" + ChatColor.RESET + "命令を完遂した"))
             }
 
-            val finalNoobs = getFinalNoobs()
+            val finalNoobs = getFinalNoobs().filter { !successNoticed.contains(it) && !failureNoticed.contains(it) }
             finalNoobs.forEach {
                 it.sendTitle(Title("" + ChatColor.RED + "✘" + ChatColor.RESET + "命令に反した"))
                 killedPlayers.add(it)
                 it.health = 0.0
+                println("${it.displayName}:Final_Failure")
             }
         }
     }
@@ -324,6 +326,45 @@ class AbstractOrders {
         override fun getResults(isFinalTick: Boolean): MutableMap<Player, OrderResult> {
             // TODO
             return mutableMapOf()
+        }
+    }
+
+    class PlaceChooseYou(val material: Material, defTime: Int) : OrderBase<PlayerMoveEvent>(defTime) {
+        private val blockList = mutableMapOf<Player, Boolean>()
+        override fun getAll(): ActionStore<PlayerMoveEvent> = Observer.instance.move
+        override fun getDisplayName(): String = "${material.name}に乗れ"
+        override fun onStart() {
+            Observer.instance.move = ActionStore(Observer.store_size * 3)
+        }
+
+        override fun getResults(isFinalTick: Boolean): MutableMap<Player, OrderResult> {
+            val list = mutableMapOf<Player, OrderResult>()
+            Bukkit.getOnlinePlayers().filter { Observer.isJoined(it) }.forEach { list[it] = OrderResult.FINAL_FAILURE }
+            getAll().actions.forEach { if(getMaterial(it) === material) list[it.player] = OrderResult.SUCCESS }
+            // 負の遺産
+//            val eventlist = mutableMapOf<Player,MutableList<Material>>()
+//            getAll().actions
+//                .filter { Observer.isJoined(it.player) }
+//                .forEach {
+//                    if (!eventlist.containsKey(it.player)) eventlist[it.player] = mutableListOf()
+//                    eventlist[it.player]!!.add(getMaterial(it))
+//                }
+//
+//            eventlist.forEach { (t, u) -> if (u.any { it === material }) blockList[t] = true }
+//
+//            blockList.forEach { (t, u) -> if(u) list[t] = OrderResult.SUCCESS }
+//            println("Actions:${getAll().actions.size}")
+//            list.forEach { (t, u) ->
+//                println("${t.displayName}:$u")
+//            }
+            return list
+        }
+
+        fun getMaterial(e: PlayerMoveEvent): Material {
+//            val loc = Location(e.to.world, e.to.blockX.toDouble(), (e.to.blockY - 1).toDouble(), e.to.blockZ.toDouble())
+            val loc = e.player.location.add(0.0, -0.75, 0.0)
+            val b = loc.block.type === material
+            return loc.block.type
         }
     }
 }

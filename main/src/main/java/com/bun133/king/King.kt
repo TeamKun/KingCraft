@@ -95,6 +95,7 @@ class KingConfig(plugin: King) {
     val moveTime = plugin.config.getInt("Orders.Move.Time")
     val noDeathTime = plugin.config.getInt("Orders.NoDeath.Time")
     val comeTime = plugin.config.getInt("Orders.Come.Time")
+    val placeChooseTime = plugin.config.getInt("Orders.PlaceChooseYou.Time")
 }
 
 class KingCommand(val plugin: King) : CommandExecutor {
@@ -277,6 +278,13 @@ class ChoiceInventory(p: Player, val plugin: King) {
                 EasyItemBuilder.genItem(Material.CHEST, "来い!")
             ).addCallBack(::come)
         )
+
+        gui.addGUIObject(
+            GUIObject(
+                NaturalNumber(5), NaturalNumber(1),
+                EasyItemBuilder.genItem(Material.CHEST, "乗れ!")
+            ).addCallBack(::choosePlace)
+        )
     }
 
     fun open() {
@@ -358,5 +366,18 @@ class ChoiceInventory(p: Player, val plugin: King) {
             else -> return
         }
         (e.whoClicked as Player).closeInventory()
+    }
+
+    fun choosePlace(e: InventoryClickEvent) {
+        val place_gui = DropChestGUI("乗らせるブロック選択", e.whoClicked as Player)
+        (e.whoClicked as Player).closeInventory()
+        place_gui.register(::placeChooseYou).open()
+    }
+
+    fun placeChooseYou(stack: MutableList<ItemStack>) {
+        stack.filter { it.type.isBlock }
+            .forEach {
+                King.king!!.addGoOn(AbstractOrders.PlaceChooseYou(it.type, plugin.configManager.placeChooseTime))
+            }
     }
 }
