@@ -138,6 +138,11 @@
             <name>Bintray Kotlin EAP Repository</name>
             <url>https://dl.bintray.com/kotlin/kotlin-eap</url>
         </repository>
+
+        <repository>
+            <id>sonatype2</id>
+            <url>https://s01.oss.sonatype.org/content/groups/public/</url>
+        </repository>
     </repositories>
 
     <pluginRepositories>
@@ -171,6 +176,16 @@
             <artifactId>kotlin-test</artifactId>
             <version>${kotlin.version}</version>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.github.bun133</groupId>
+            <artifactId>flyframe</artifactId>
+            <version>1.0.5-fixed</version>
+        </dependency>
+        <dependency>
+            <groupId>com.github.bun133</groupId>
+            <artifactId>lang-module</artifactId>
+            <version>1.0.5</version>
         </dependency>
     </dependencies>
 </project>

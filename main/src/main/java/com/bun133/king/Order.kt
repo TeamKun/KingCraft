@@ -178,7 +178,7 @@ class AbstractOrders {
      * 指定されたブロック掘るやつ
      */
     class Dig(var material: Material, var amount: Int, defTime: Int) : OrderBase<Pair<Player, ItemStack>>(defTime) {
-        override fun getDisplayName(): String = "${material.key.key}を${amount}個掘れ!"
+        override fun getDisplayName(): String = "${King.plugin!!.langModule!!.getLangList()[0].get(King.plugin!!.langModule!!.plugin,material)}を${amount}個掘れ!"
         override fun onStart() {
             Observer.instance.dig = ActionStore(Observer.store_size)
         }
@@ -214,25 +214,36 @@ class AbstractOrders {
     /**
      * Moveといいつつ、動いちゃダメな奴
      */
-    class Move(defTime: Int) : OrderBase<PlayerMoveEvent>(defTime) {
+    class Move(defTime: Int) : OrderBase<PlayerMoveEvent>(defTime + 4 * 20 - 1) {
         override fun getAll(): ActionStore<PlayerMoveEvent> = Observer.instance.move
         override fun getDisplayName(): String = "動くな!"
+        var addedTime = 0
         override fun onStart() {
             Observer.instance.move = ActionStore(Observer.store_size * 3)
+            addedTime = 4 * 20 - 1
         }
 
         override fun getResults(isFinalTick: Boolean): MutableMap<Player, OrderResult> {
+            addedTime--
+            if(addedTime > 0){
+                val map = mutableMapOf<Player,OrderResult>()
+                Bukkit.getOnlinePlayers().filter { Observer.isJoined(it) }.forEach {
+                    map[it] = OrderResult.PENDING
+                    it.updateTitle(Title("${(addedTime/20)}","動くな!",0,10,0))
+                }
+                return map
+            }
             val list = mutableMapOf<Player, OrderResult>()
             getAll().actions
                 .filter {
-                    it.from.x != it.to.x ||
-                            it.from.y != it.to.y ||
-                            it.from.z != it.to.z
+                    !(it.from.x == it.to.x &&
+                    it.from.y == it.to.y &&
+                    it.from.z == it.to.z)
                 }
                 .map {
                     it.player
                 }
-                .distinct()
+//                .distinct()
                 .forEach {
                     list[it] = OrderResult.FAILURE
                 }
@@ -334,7 +345,7 @@ class AbstractOrders {
     class PlaceChooseYou(val material: Material, defTime: Int) : OrderBase<PlayerMoveEvent>(defTime) {
         private val blockList = mutableMapOf<Player, Boolean>()
         override fun getAll(): ActionStore<PlayerMoveEvent> = Observer.instance.move
-        override fun getDisplayName(): String = "${material.name}に乗れ"
+        override fun getDisplayName(): String = "${King.plugin!!.langModule!!.getLangList()[0].get(King.plugin!!.langModule!!.plugin,material)}に乗れ"
         override fun onStart() {
             Observer.instance.move = ActionStore(Observer.store_size * 3)
         }
@@ -342,7 +353,7 @@ class AbstractOrders {
         override fun getResults(isFinalTick: Boolean): MutableMap<Player, OrderResult> {
             val list = mutableMapOf<Player, OrderResult>()
             Bukkit.getOnlinePlayers().filter { Observer.isJoined(it) }.forEach { list[it] = OrderResult.FINAL_FAILURE }
-            getAll().actions.forEach { if (getMaterial(it) === material) list[it.player] = OrderResult.SUCCESS }
+            getAll().actions.forEach { if (getMaterial(it) === material) list[it.player] = OrderResult.FINAL_SUCCESS }
             // 負の遺産
 //            val eventlist = mutableMapOf<Player,MutableList<Material>>()
 //            getAll().actions
@@ -372,7 +383,7 @@ class AbstractOrders {
 
     class Kill(val entityType: EntityType, val amount: Int, defTime: Int) : OrderBase<EntityDeathEvent>(defTime) {
         override fun getAll(): ActionStore<EntityDeathEvent> = Observer.instance.kill
-        override fun getDisplayName(): String = "${entityType.name}を${amount}体殺せ!"
+        override fun getDisplayName(): String = "${King.plugin!!.langModule!!.getLangList()[0].get(King.plugin!!.langModule!!.plugin,entityType)}を${amount}体殺せ!"
         override fun onStart() {
             Observer.instance.kill = ActionStore(Observer.store_size * 2)
         }

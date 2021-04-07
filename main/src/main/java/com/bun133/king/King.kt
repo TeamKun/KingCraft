@@ -3,6 +3,9 @@ package com.bun133.king
 import com.bun133.king.flylib.*
 import com.destroystokyo.paper.Title
 import com.flylib.util.NaturalNumber
+import com.github.bun133.flyframe.*
+import com.github.bun133.langmodule.LangModule
+import com.github.bun133.langmodule.LangModulePlugin
 import org.bukkit.Bukkit
 import org.bukkit.ChatColor
 import org.bukkit.Material
@@ -19,31 +22,71 @@ import org.bukkit.inventory.meta.SpawnEggMeta
 import org.bukkit.plugin.java.JavaPlugin
 import org.jetbrains.annotations.Nullable
 
-class King : JavaPlugin() {
+class King : FlyModulePlugin() {
     companion object {
         var isGoingOn = false
         var king: KingCommand? = null
         val kingPlayers = mutableListOf<Player>()
+        var plugin: King? = null
     }
 
+    val worker = KingWorkerModule(this)
     lateinit var configManager: KingConfig
+    var langModule: LangModule? = null
 
     override fun onEnable() {
         FlyLib(this)
         // Plugin startup logic
+        plugin = this
         server.pluginManager.registerEvents(Observer.instance, this)
         saveDefaultConfig()
         configManager = KingConfig(this)
-        king = KingCommand(this)
-        getCommand("king")!!.setExecutor(king)
-        getCommand("king")!!.tabCompleter = KingTab.gen()
+//        king = KingCommand(this)
+//        getCommand("king")!!.setExecutor(king)
+//        getCommand("king")!!.tabCompleter = KingTab.gen()
         server.scheduler.runTaskTimer(this, Runnable {
             king!!.checkGoOn()
         }, 10, 1)
     }
 
+    override fun getCommands(): MutableList<FlyCommandProxy>{
+        king = KingCommand(this)
+        return mutableListOf(FlyCommandProxy(this, "king", king!!, KingTab.gen()))
+    }
+
+    override fun getModule(): Module = worker
+
     override fun onDisable() {
         // Plugin shutdown logic
+    }
+}
+
+
+class KingWorkerModule(val plugin: King) : Module {
+    override var authorName: String = "Bun133"
+    override var moduleName: String = "KingWorkerModule"
+    override var version: String = "1.0"
+
+    override fun onEvent(e: ModuleEvent) {
+        when (e) {
+            ModuleEvent.LOADED_ALL_MODULE -> {
+                println("[KingWorkerModule] ALL Module Loaded!")
+                println("[KingWorkerModule] Loading Lang Module...")
+                val flyframe = plugin.server.pluginManager.getPlugin("Flyframe") as FlyFrame
+                val lang = flyframe.requireModule("LangModule")
+                if (lang != null) {
+                    plugin.langModule = lang as LangModule
+                } else {
+                    println("[KingWorkerModule]Something went wrong while require!")
+                }
+            }
+        }
+    }
+
+    override fun onModuleDisable() {
+    }
+
+    override fun onModuleEnable() {
     }
 }
 
@@ -66,13 +109,13 @@ class KingTab {
                         "c", "choice"
                     ),
                     TabObject(
-                        TabPart.selectors,
+                        TabObject("@r"),
                         TabPart.playerSelector
                     )
                 ),
                 TabChain(
                     TabObject("set"),
-                    TabObject(TabPart.selectors, TabPart.playerSelector)
+                    TabObject(TabObject("@r"), TabPart.playerSelector)
                 )
             )
         }
@@ -108,6 +151,40 @@ class KingCommand(val plugin: King) : CommandExecutor {
         if (sender is Player) {
             if (sender.isOp) {
                 return run(sender, command, label, args)
+            }
+        }
+        return serverRun(sender, command, label, args)
+    }
+
+    private fun serverRun(sender: CommandSender, command: Command, label: String, args: Array<out String>): Boolean {
+        when(args.size){
+            2 -> {
+                when(args[0]){
+                    "set" -> {
+                        val ps = Bukkit.selectEntities(sender,args[1])
+                        if(ps.isNotEmpty()){
+                            val p = ps [0]
+                            if(p !is Player) return false
+                            if (King.kingPlayers.contains(p)) {
+                                p.sendMessage("You are no longer King!")
+                                King.kingPlayers.remove(p)
+                                return true
+                            } else {
+                                p.sendMessage("You became a King!")
+                                Bukkit.getOnlinePlayers().forEach {
+                                    it.sendTitle(
+                                        Title(
+                                            "新しい王様だ!",
+                                            "" + ChatColor.GOLD + p.displayName + ChatColor.RESET + "が新しい王様だ"
+                                        )
+                                    )
+                                }
+                                King.kingPlayers.add(p)
+                                return true
+                            }
+                        }
+                    }
+                }
             }
         }
         return false
@@ -314,8 +391,9 @@ class ChoiceInventory(p: Player, val plugin: King) {
     }
 
     fun chooseDig(stack: MutableList<ItemStack>) {
-        stack.filter { it.type.isBlock }.forEach {
-            King.king!!.addGoOn(AbstractOrders.Dig(it.type, it.amount, plugin.configManager.digTime))
+        val s = stack.filter { it.type.isBlock }
+        if (s.getOrNull(0) != null) {
+            King.king!!.addGoOn(AbstractOrders.Dig(s[0].type, s[0].amount, plugin.configManager.digTime))
         }
     }
 
@@ -415,7 +493,7 @@ class ChoiceInventory(p: Player, val plugin: King) {
         return stack.itemMeta is SpawnEggMeta
     }
 
-    fun getEntityType(stack:ItemStack): EntityType? {
+    fun getEntityType(stack: ItemStack): EntityType? {
 //        when(stack.type){
 //            Material.BEE_SPAWN_EGG -> EntityType.BEE
 //            Material.BLAZE_SPAWN_EGG -> EntityType.BLAZE
@@ -446,7 +524,7 @@ class ChoiceInventory(p: Player, val plugin: King) {
 //            Material.DONKEY_SPAWN_EGG -> EntityType.DONKEY
 //        }
 
-        val mob_name = stack.type.name.replace("_SPAWN_EGG","").toLowerCase()
+        val mob_name = stack.type.name.replace("_SPAWN_EGG", "").toLowerCase()
         val entityType = EntityType.fromName(mob_name)
         return entityType
     }
