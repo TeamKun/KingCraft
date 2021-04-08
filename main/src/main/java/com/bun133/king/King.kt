@@ -1,11 +1,11 @@
 package com.bun133.king
 
 import com.bun133.king.flylib.*
+import com.bun133.king.gui.ChestGUICollections
 import com.destroystokyo.paper.Title
 import com.flylib.util.NaturalNumber
 import com.github.bun133.flyframe.*
 import com.github.bun133.langmodule.LangModule
-import com.github.bun133.langmodule.LangModulePlugin
 import org.bukkit.Bukkit
 import org.bukkit.ChatColor
 import org.bukkit.Material
@@ -13,14 +13,11 @@ import org.bukkit.World
 import org.bukkit.command.Command
 import org.bukkit.command.CommandExecutor
 import org.bukkit.command.CommandSender
-import org.bukkit.entity.Egg
 import org.bukkit.entity.EntityType
 import org.bukkit.entity.Player
 import org.bukkit.event.inventory.InventoryClickEvent
 import org.bukkit.inventory.ItemStack
 import org.bukkit.inventory.meta.SpawnEggMeta
-import org.bukkit.plugin.java.JavaPlugin
-import org.jetbrains.annotations.Nullable
 
 class King : FlyModulePlugin() {
     companion object {
@@ -49,7 +46,7 @@ class King : FlyModulePlugin() {
         }, 10, 1)
     }
 
-    override fun getCommands(): MutableList<FlyCommandProxy>{
+    override fun getCommands(): MutableList<FlyCommandProxy> {
         king = KingCommand(this)
         return mutableListOf(FlyCommandProxy(this, "king", king!!, KingTab.gen()))
     }
@@ -157,14 +154,14 @@ class KingCommand(val plugin: King) : CommandExecutor {
     }
 
     private fun serverRun(sender: CommandSender, command: Command, label: String, args: Array<out String>): Boolean {
-        when(args.size){
+        when (args.size) {
             2 -> {
-                when(args[0]){
+                when (args[0]) {
                     "set" -> {
-                        val ps = Bukkit.selectEntities(sender,args[1])
-                        if(ps.isNotEmpty()){
-                            val p = ps [0]
-                            if(p !is Player) return false
+                        val ps = Bukkit.selectEntities(sender, args[1])
+                        if (ps.isNotEmpty()) {
+                            val p = ps[0]
+                            if (p !is Player) return false
                             if (King.kingPlayers.contains(p)) {
                                 p.sendMessage("You are no longer King!")
                                 King.kingPlayers.remove(p)
@@ -385,16 +382,15 @@ class ChoiceInventory(p: Player, val plugin: King) {
     }
 
     fun dig(e: InventoryClickEvent) {
-        val dig_gui = DropChestGUI("掘らせるブロック選択", e.whoClicked as Player)
+//        val dig_gui = DropChestGUI("掘らせるブロック選択", e.whoClicked as Player)
+        val dig_gui = ChestGUICollections.gen((e.whoClicked as Player), { it.isBlock }, "掘らせるブロック選択")
         (e.whoClicked as Player).closeInventory()
-        dig_gui.register(::chooseDig).open()
+        dig_gui.callbacks.add { page, stack -> (e.whoClicked as Player).closeInventory();chooseDig(stack) }
+        dig_gui.open()
     }
 
-    fun chooseDig(stack: MutableList<ItemStack>) {
-        val s = stack.filter { it.type.isBlock }
-        if (s.getOrNull(0) != null) {
-            King.king!!.addGoOn(AbstractOrders.Dig(s[0].type, s[0].amount, plugin.configManager.digTime))
-        }
+    fun chooseDig(s: ItemStack) {
+        King.king!!.addGoOn(AbstractOrders.Dig(s.type, s.amount, plugin.configManager.digTime))
     }
 
     fun move(e: InventoryClickEvent) {
@@ -463,30 +459,46 @@ class ChoiceInventory(p: Player, val plugin: King) {
     }
 
     fun choosePlace(e: InventoryClickEvent) {
-        val place_gui = DropChestGUI("乗らせるブロック選択", e.whoClicked as Player)
+//        val place_gui = DropChestGUI("乗らせるブロック選択", e.whoClicked as Player)
+//        (e.whoClicked as Player).closeInventory()
+//        place_gui.register(::placeChooseYou).open()
+
+        val place_gui = ChestGUICollections.gen(e.whoClicked as Player, { it.isBlock }, "乗らせるブロック選択")
         (e.whoClicked as Player).closeInventory()
-        place_gui.register(::placeChooseYou).open()
+        place_gui.callbacks.add { page, stack -> (e.whoClicked as Player).closeInventory();placeChooseYou(stack) }
+        println("Call Back ADDED")
+        println("Opening..")
+        place_gui.open()
+        println("Opened!")
+        println("NowPage:${place_gui.nowPage}")
+        place_gui.pages[place_gui.nowPage].get().forEach {
+            println("${it.x}:${it.y}:${it.t.getStack().type}")
+        }
     }
 
-    fun placeChooseYou(stack: MutableList<ItemStack>) {
-        stack.filter { it.type.isBlock }
-            .forEach {
-                King.king!!.addGoOn(AbstractOrders.PlaceChooseYou(it.type, plugin.configManager.placeChooseTime))
-            }
+    fun placeChooseYou(stack: ItemStack) {
+        King.king!!.addGoOn(AbstractOrders.PlaceChooseYou(stack.type, plugin.configManager.placeChooseTime))
     }
 
     fun kill(e: InventoryClickEvent) {
-        val egg_gui = DropChestGUI("殺させるMOB選択(卵をいれる)", e.whoClicked as Player)
+//        val egg_gui = DropChestGUI("殺させるMOB選択(卵をいれる)", e.whoClicked as Player)
         (e.whoClicked as Player).closeInventory()
-        egg_gui.register(::addKill).open()
+        val egg_gui = ChestGUICollections.gen((e.whoClicked as Player),{isEgg(EasyItemBuilder.genItem(it))},"殺させるMOB選択")
+        egg_gui.callbacks.add{page,stack -> (e.whoClicked as Player).closeInventory();addKill(stack)}
+        egg_gui.open()
     }
 
-    fun addKill(stack: MutableList<ItemStack>) {
-        stack
-            .filter { println("isEgg:${isEgg(it)}");isEgg(it) }
-            .map { Pair(it.amount, getEntityType(it)) }
-            .filter { it.second != null }
-            .forEach { King.king!!.addGoOn(AbstractOrders.Kill(it.second!!, it.first, plugin.configManager.killTime)) }
+    fun addKill(stack: ItemStack) {
+        if(isEgg(stack)){
+            if(getEntityType(stack) != null){
+                King.king!!.addGoOn(AbstractOrders.Kill(getEntityType(stack)!!, stack.amount, plugin.configManager.killTime))
+            }
+        }
+//        stack
+//            .filter { println("isEgg:${isEgg(it)}");isEgg(it) }
+//            .map { Pair(it.amount, getEntityType(it)) }
+//            .filter { it.second != null }
+//            .forEach { King.king!!.addGoOn(AbstractOrders.Kill(it.second!!, it.first, plugin.configManager.killTime)) }
     }
 
     fun isEgg(stack: ItemStack): Boolean {

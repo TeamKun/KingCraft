@@ -1,8 +1,10 @@
-package com.flylib.util
+package com.bun133.king.flylib
+
+import com.flylib.util.NaturalNumber
 
 class FlatList<T>() {
-    private var list: ArrayList<FlatColEntry<T>> = arrayListOf()
-
+    var list: ArrayList<FlatColEntry<T>> = arrayListOf()
+    private set
     fun set(x: Int, y: Int, t: T) {
         if (isExist(x, y)) {
             getEntry(x, y)!!.t = t
@@ -84,8 +86,9 @@ class FlatListException(message: String) : Exception(message) {
 /**
  * The Index Start Point is (1,1)
  */
-class SizedFlatList<K>(val width: NaturalNumber, val height: NaturalNumber) {
-    private var flatList = FlatList<K>()
+class SizedFlatList<K>(val width: NaturalNumber, val height: NaturalNumber) : Iterable<FlatEntry<K>>{
+    var flatList = FlatList<K>()
+    private set
     fun set(x: NaturalNumber, y: NaturalNumber, t: K) {
         outCheck(x, y)
         flatList.setEntry(x.i, y.i, t)
@@ -109,7 +112,59 @@ class SizedFlatList<K>(val width: NaturalNumber, val height: NaturalNumber) {
             throw IndexOutOfSizeException(x.i, y.i, width.i, height.i)
         }
     }
+
+    fun size(): Int {
+        var count = 0
+        flatList.list.forEach {
+            count += it.list.size
+        }
+        return count
+    }
+
+    override fun iterator(): Iterator<FlatEntry<K>> = iterator
+
+    val iterator = SizedFlatListIterator(this)
+
+    class SizedFlatListIterator<K>(val list: SizedFlatList<K>): Iterator<FlatEntry<K>>{
+        var pointer = Pair(1,1)
+
+        override fun hasNext(): Boolean {
+            return get(getNextPointer()) != null
+        }
+
+        override fun next(): FlatEntry<K> {
+            shiftNext()
+            return get()!!
+        }
+
+        private fun get(pointer:Pair<Int,Int>): FlatEntry<K>? {
+            if(pointer.first <= 0 || pointer.second <=0) return null
+            return list.get(NaturalNumber(pointer.first), NaturalNumber(pointer.second))
+        }
+
+        private fun get(): FlatEntry<K>? = get(pointer)
+
+        private fun shiftNext(){
+            pointer = getNextPointer()
+        }
+
+        private fun getNextPointer():Pair<Int,Int>{
+            var poi = Pair(pointer.first,pointer.second)
+            poi = Pair(poi.first+1,poi.second)
+            if(poi.first > list.width.i){
+                poi = Pair(1,poi.second + 1)
+            }
+            if(poi.second > list.height.i){
+                // すべてがこいつのせい
+//                poi = Pair(poi.first,1)
+                poi = Pair(0,0)
+            }
+            return poi
+        }
+
+    }
 }
+
 
 class IndexOutOfSizeException(private val x: Int, private val y: Int, private val width: Int, private val height: Int) :
     Exception(

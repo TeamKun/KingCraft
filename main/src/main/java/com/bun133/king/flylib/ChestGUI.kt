@@ -1,7 +1,6 @@
 package com.bun133.king.flylib
 
 import com.flylib.util.NaturalNumber
-import com.flylib.util.SizedFlatList
 import org.bukkit.Bukkit
 import org.bukkit.Material
 import org.bukkit.NamespacedKey
@@ -17,7 +16,7 @@ import java.util.*
 import kotlin.collections.ArrayList
 import kotlin.reflect.KFunction1
 
-class ChestGUI(var p: Player, var col: NaturalNumber, name: String) {
+open class ChestGUI(var p: Player, var col: NaturalNumber, name: String) {
     var guis: SizedFlatList<GUIObject> = SizedFlatList(NaturalNumber(9), col)
         private set
     var inventory: Inventory
@@ -35,7 +34,7 @@ class ChestGUI(var p: Player, var col: NaturalNumber, name: String) {
     /**
      * Open Inventory
      */
-    fun open() {
+    open fun open() {
         inventorySync()
         p.openInventory(inventory)
     }
@@ -43,9 +42,9 @@ class ChestGUI(var p: Player, var col: NaturalNumber, name: String) {
     /**
      * add GUIObject to GUI
      */
-    fun addGUIObject(obj: GUIObject) {
+    fun addGUIObject(obj: GUIObject,ignoreSync:Boolean = false) {
         guis.set(obj.x, obj.y, obj)
-        inventorySync()
+        if(!ignoreSync) inventorySync()
         if (isOpening) {
             //ReOpen
             open()
@@ -166,7 +165,7 @@ class GUIObjectEventHandler(
                             callback.invoke(e)
                         }
                         for (callback in runnables) {
-                            callback.invoke(e)
+                            callback(e)
                         }
                         e.isCancelled = true
                     }
