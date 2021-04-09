@@ -1,7 +1,7 @@
 package com.bun133.king
 
 import com.bun133.king.flylib.*
-import com.bun133.king.gui.ChestGUICollections
+import com.bun133.king.flylib.ChestGUICollections
 import com.destroystokyo.paper.Title
 import com.flylib.util.NaturalNumber
 import com.github.bun133.flyframe.*
@@ -466,14 +466,7 @@ class ChoiceInventory(p: Player, val plugin: King) {
         val place_gui = ChestGUICollections.gen(e.whoClicked as Player, { it.isBlock }, "乗らせるブロック選択")
         (e.whoClicked as Player).closeInventory()
         place_gui.callbacks.add { page, stack -> (e.whoClicked as Player).closeInventory();placeChooseYou(stack) }
-        println("Call Back ADDED")
-        println("Opening..")
         place_gui.open()
-        println("Opened!")
-        println("NowPage:${place_gui.nowPage}")
-        place_gui.pages[place_gui.nowPage].get().forEach {
-            println("${it.x}:${it.y}:${it.t.getStack().type}")
-        }
     }
 
     fun placeChooseYou(stack: ItemStack) {
