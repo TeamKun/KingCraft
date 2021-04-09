@@ -100,6 +100,22 @@ open class ChestGUI(var p: Player, var col: NaturalNumber, name: String) {
  * left up is (1,1)
  */
 class GUIObject(val x: NaturalNumber, val y: NaturalNumber, real_stack: ItemStack) {
+    companion object{
+        fun deepCopy(obj:GUIObject): GUIObject {
+            val r = GUIObject(NaturalNumber(obj.x.i),NaturalNumber(obj.y.i),obj.getStack())
+            obj.handler.callbacks.forEach {
+                r.addCallBack(it)
+            }
+
+            obj.handler.runnables.forEach {
+                r.addCallBack(it)
+            }
+
+            return r
+        }
+    }
+
+
     //    val id: ByteArray = GUIObjectByteManager.instance.getNew()
     val id: String = UUID.randomUUID().toString()
     private val handler = GUIObjectEventHandler(this, real_stack)
@@ -109,7 +125,7 @@ class GUIObject(val x: NaturalNumber, val y: NaturalNumber, real_stack: ItemStac
         return this
     }
 
-    fun addCallBack(r:(InventoryClickEvent) -> Unit): GUIObject{
+    fun addCallBack(r:(InventoryClickEvent) -> Unit): GUIObject {
         handler.runnables.add(r)
         return this
     }

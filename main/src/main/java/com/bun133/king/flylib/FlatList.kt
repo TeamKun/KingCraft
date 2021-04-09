@@ -126,10 +126,12 @@ class SizedFlatList<K>(val width: NaturalNumber, val height: NaturalNumber) : It
     val iterator = SizedFlatListIterator(this)
 
     class SizedFlatListIterator<K>(val list: SizedFlatList<K>): Iterator<FlatEntry<K>>{
-        var pointer = Pair(1,1)
+        var pointer = Pair(0,1)
 
         override fun hasNext(): Boolean {
-            return get(getNextPointer()) != null
+            val b = get(getNextPointer()) != null
+            if(!b) pointer = Pair(0,1)
+            return b
         }
 
         override fun next(): FlatEntry<K> {

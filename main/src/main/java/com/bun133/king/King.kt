@@ -383,7 +383,7 @@ class ChoiceInventory(p: Player, val plugin: King) {
 
     fun dig(e: InventoryClickEvent) {
 //        val dig_gui = DropChestGUI("掘らせるブロック選択", e.whoClicked as Player)
-        val dig_gui = ChestGUICollections.gen((e.whoClicked as Player), { it.isBlock }, "掘らせるブロック選択")
+        val dig_gui = ChestGUICollections.gen((e.whoClicked as Player), { EasyItemBuilder.genItem(it).type.isOccluding }, "掘らせるブロック選択")
         (e.whoClicked as Player).closeInventory()
         dig_gui.callbacks.add { page, stack -> (e.whoClicked as Player).closeInventory();chooseDig(stack) }
         dig_gui.open()
@@ -463,7 +463,7 @@ class ChoiceInventory(p: Player, val plugin: King) {
 //        (e.whoClicked as Player).closeInventory()
 //        place_gui.register(::placeChooseYou).open()
 
-        val place_gui = ChestGUICollections.gen(e.whoClicked as Player, { it.isBlock }, "乗らせるブロック選択")
+        val place_gui = ChestGUICollections.gen(e.whoClicked as Player, { EasyItemBuilder.genItem(it).type.isOccluding }, "乗らせるブロック選択")
         (e.whoClicked as Player).closeInventory()
         place_gui.callbacks.add { page, stack -> (e.whoClicked as Player).closeInventory();placeChooseYou(stack) }
         place_gui.open()
