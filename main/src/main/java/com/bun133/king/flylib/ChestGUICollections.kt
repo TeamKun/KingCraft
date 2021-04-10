@@ -1,5 +1,7 @@
 package com.bun133.king.flylib
 
+import com.bun133.king.ChoiceInventory
+import com.bun133.king.King
 import com.flylib.util.NaturalNumber
 import org.bukkit.Bukkit
 import org.bukkit.Material
@@ -165,6 +167,13 @@ class PagedChestGUI(val p: Player, val col: NaturalNumber, val name: String) {
             ).addCallBack(::cNext),
             true
         )
+        chest.addGUIObject(
+            GUIObject(
+                NaturalNumber(9), NaturalNumber(col.i + 1),
+                EasyItemBuilder.genItem(Material.EMERALD_BLOCK, "戻る")
+            ).addCallBack(::cBack),
+            true
+        )
     }
 
     // Internal Methods For UI
@@ -182,6 +191,10 @@ class PagedChestGUI(val p: Player, val col: NaturalNumber, val name: String) {
     private fun cNext(e: InventoryClickEvent) {
         println("次のページへ")
         nextPage()
+    }
+
+    private fun cBack(e:InventoryClickEvent){
+        ChoiceInventory(e.whoClicked as Player,King.plugin!!).open()
     }
 
     // Internal End

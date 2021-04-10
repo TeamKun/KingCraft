@@ -6,7 +6,7 @@
 
     <groupId>com.bun133</groupId>
     <artifactId>king</artifactId>
-    <version>1.1</version>
+    <version>1.2</version>
     <packaging>jar</packaging>
 
     <name>King</name>

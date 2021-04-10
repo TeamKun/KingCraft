@@ -15,6 +15,7 @@ import org.bukkit.event.entity.PlayerDeathEvent
 import org.bukkit.event.player.PlayerMoveEvent
 import org.bukkit.inventory.ItemStack
 import org.jetbrains.annotations.NotNull
+import kotlin.math.max
 
 interface Order<E> {
     fun getAll(): ActionStore<E>
@@ -233,15 +234,17 @@ class AbstractOrders {
         }
 
         override fun getResults(isFinalTick: Boolean): MutableMap<Player, OrderResult> {
-            addedTime--
             if (addedTime > 0) {
+                addedTime--
                 val map = mutableMapOf<Player, OrderResult>()
-                Bukkit.getOnlinePlayers().filter { Observer.isJoined(it) }.forEach {
+                Bukkit.getOnlinePlayers().forEach {
                     map[it] = OrderResult.PENDING
                     it.updateTitle(Title("${(addedTime / 20)}", "動くな!", 0, 10, 0))
                 }
                 return map
             }
+
+
             val list = mutableMapOf<Player, OrderResult>()
             getAll().actions
                 .filter {
@@ -261,6 +264,10 @@ class AbstractOrders {
                 .filter { !list.containsKey(it) }
                 .forEach { list[it] = OrderResult.FINAL_SUCCESS }
             return list
+        }
+
+        override fun getTimer(): Int {
+            return time - addedTime
         }
     }
 
@@ -439,6 +446,7 @@ class AbstractOrders {
                 material
             )
         }を${amount}個ゲットしろ!"
+
         override fun onStart() {
             Observer.instance.itemPick = ActionStore(Observer.store_size * 2)
         }

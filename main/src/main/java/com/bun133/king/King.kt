@@ -32,6 +32,7 @@ class King : FlyModulePlugin() {
     val worker = KingWorkerModule(this)
     lateinit var configManager: KingConfig
     var langModule: LangModule? = null
+    lateinit var skipper: TimeSkipper
 
     override fun onEnable() {
         FlyLib(this)
@@ -40,6 +41,8 @@ class King : FlyModulePlugin() {
         server.pluginManager.registerEvents(Observer.instance, this)
         saveDefaultConfig()
         configManager = KingConfig(this)
+        king = KingCommand(this)
+        skipper = TimeSkipper(this)
 //        king = KingCommand(this)
 //        getCommand("king")!!.setExecutor(king)
 //        getCommand("king")!!.tabCompleter = KingTab.gen()
@@ -49,7 +52,6 @@ class King : FlyModulePlugin() {
     }
 
     override fun getCommands(): MutableList<FlyCommandProxy> {
-        king = KingCommand(this)
         return mutableListOf(FlyCommandProxy(this, "king", king!!, KingTab.gen()))
     }
 
@@ -112,10 +114,10 @@ class KingTab {
                         TabPart.playerSelector
                     )
                 ),
-                TabChain(
-                    TabObject("set"),
-                    TabObject(TabObject("@r"), TabPart.playerSelector)
-                )
+//                TabChain(
+//                    TabObject("set"),
+//                    TabObject(TabObject("@r"), TabPart.playerSelector)
+//                )
             )
         }
     }
@@ -159,34 +161,34 @@ class KingCommand(val plugin: King) : CommandExecutor {
 
     private fun serverRun(sender: CommandSender, command: Command, label: String, args: Array<out String>): Boolean {
         when (args.size) {
-            2 -> {
-                when (args[0]) {
-                    "set" -> {
-                        val ps = Bukkit.selectEntities(sender, args[1])
-                        if (ps.isNotEmpty()) {
-                            val p = ps[0]
-                            if (p !is Player) return false
-                            if (King.kingPlayers.contains(p)) {
-                                p.sendMessage("You are no longer King!")
-                                King.kingPlayers.remove(p)
-                                return true
-                            } else {
-                                p.sendMessage("You became a King!")
-                                Bukkit.getOnlinePlayers().forEach {
-                                    it.sendTitle(
-                                        Title(
-                                            "新しい王様だ!",
-                                            "" + ChatColor.GOLD + p.displayName + ChatColor.RESET + "が新しい王様だ"
-                                        )
-                                    )
-                                }
-                                King.kingPlayers.add(p)
-                                return true
-                            }
-                        }
-                    }
-                }
-            }
+//            2 -> {
+//                when (args[0]) {
+//                    "set" -> {
+//                        val ps = Bukkit.selectEntities(sender, args[1])
+//                        if (ps.isNotEmpty()) {
+//                            val p = ps[0]
+//                            if (p !is Player) return false
+//                            if (King.kingPlayers.contains(p)) {
+//                                p.sendMessage("You are no longer King!")
+//                                King.kingPlayers.remove(p)
+//                                return true
+//                            } else {
+//                                p.sendMessage("You became a King!")
+//                                Bukkit.getOnlinePlayers().forEach {
+//                                    it.sendTitle(
+//                                        Title(
+//                                            "新しい王様だ!",
+//                                            "" + ChatColor.GOLD + p.displayName + ChatColor.RESET + "が新しい王様だ"
+//                                        )
+//                                    )
+//                                }
+//                                King.kingPlayers.add(p)
+//                                return true
+//                            }
+//                        }
+//                    }
+//                }
+//            }
         }
         return false
     }
@@ -207,17 +209,8 @@ class KingCommand(val plugin: King) : CommandExecutor {
                     if (King.kingPlayers.contains(sender)) {
                         ChoiceInventory(sender, plugin).open()
                     } else {
-                        sender.sendMessage("You are not King!")
-                    }
-                }
-                "set" -> {
-                    if (sender.isOp) {
-                        if (King.kingPlayers.contains(sender)) {
-                            sender.sendMessage("You are no longer King!")
-                            King.kingPlayers.remove(sender)
-                            return true
-                        } else {
-                            sender.sendMessage("You became a King!")
+                        if (sender.isOp) {
+
                             Bukkit.getOnlinePlayers().forEach {
                                 it.sendTitle(
                                     Title(
@@ -226,14 +219,39 @@ class KingCommand(val plugin: King) : CommandExecutor {
                                     )
                                 )
                             }
+
                             King.kingPlayers.add(sender)
+
+                            ChoiceInventory(sender, plugin).open()
                             return true
                         }
-                    } else {
-                        sender.sendMessage("You don't have enough perm!")
-                        return true
+                        sender.sendMessage("You are not King!")
                     }
                 }
+//                "set" -> {
+//                    if (sender.isOp) {
+//                        if (King.kingPlayers.contains(sender)) {
+//                            sender.sendMessage("You are no longer King!")
+//                            King.kingPlayers.remove(sender)
+//                            return true
+//                        } else {
+//                            sender.sendMessage("You became a King!")
+//                            Bukkit.getOnlinePlayers().forEach {
+//                                it.sendTitle(
+//                                    Title(
+//                                        "新しい王様だ!",
+//                                        "" + ChatColor.GOLD + sender.displayName + ChatColor.RESET + "が新しい王様だ"
+//                                    )
+//                                )
+//                            }
+//                            King.kingPlayers.add(sender)
+//                            return true
+//                        }
+//                    } else {
+//                        sender.sendMessage("You don't have enough perm!")
+//                        return true
+//                    }
+//                }
                 else -> {
                     return false
                 }
@@ -251,47 +269,62 @@ class KingCommand(val plugin: King) : CommandExecutor {
                             ChoiceInventory(p[0] as Player, plugin).open()
                             return true
                         } else {
+                            if(sender.isOp){
+                                Bukkit.getOnlinePlayers().forEach {
+                                    it.sendTitle(
+                                        Title(
+                                            "新しい王様だ!",
+                                            "" + ChatColor.GOLD + (p[0] as Player).displayName + ChatColor.RESET + "が新しい王様だ"
+                                        )
+                                    )
+                                }
+
+                                King.kingPlayers.add(p[0] as Player)
+
+                                ChoiceInventory(sender, plugin).open()
+                                return true
+                            }
                             sender.sendMessage("${(p[0] as Player).displayName} isn't King!")
                             return false
                         }
                     }
                 }
-                "set" -> {
-                    val p = Bukkit.selectEntities(sender, args[1])
-                    if (p.isEmpty() || p[0] !is Player) {
-                        sender.sendMessage("Player NotFound!")
-                        return false
-                    } else {
-                        val player: Player = p[0] as Player
-                        if (King.kingPlayers.contains(player)) {
-                            sender.sendMessage("${player.displayName} are no longer King!")
-                            player.sendMessage("You are no longer King!")
-                            King.kingPlayers.remove(player)
-                            return true
-                        } else {
-                            sender.sendMessage("${player.displayName} became a King!")
-                            player.sendMessage("You became a King!")
-                            Bukkit.getOnlinePlayers()
-                                .forEach {
-                                    it.sendTitle(
-                                        Title(
-                                            "新しい王様だ!",
-                                            "" + ChatColor.GOLD + player.displayName + ChatColor.RESET + "が新しい王様だ"
-                                        )
-                                    )
-                                }
-                            King.kingPlayers.add(player)
-                            return true
-                        }
-                    }
-                }
+//                "set" -> {
+//                    val p = Bukkit.selectEntities(sender, args[1])
+//                    if (p.isEmpty() || p[0] !is Player) {
+//                        sender.sendMessage("Player NotFound!")
+//                        return false
+//                    } else {
+//                        val player: Player = p[0] as Player
+//                        if (King.kingPlayers.contains(player)) {
+//                            sender.sendMessage("${player.displayName} are no longer King!")
+//                            player.sendMessage("You are no longer King!")
+//                            King.kingPlayers.remove(player)
+//                            return true
+//                        } else {
+//                            sender.sendMessage("${player.displayName} became a King!")
+//                            player.sendMessage("You became a King!")
+//                            Bukkit.getOnlinePlayers()
+//                                .forEach {
+//                                    it.sendTitle(
+//                                        Title(
+//                                            "新しい王様だ!",
+//                                            "" + ChatColor.GOLD + player.displayName + ChatColor.RESET + "が新しい王様だ"
+//                                        )
+//                                    )
+//                                }
+//                            King.kingPlayers.add(player)
+//                            return true
+//                        }
+//                    }
+//                }
             }
         }
 
         return false
     }
 
-    private val goOn = mutableListOf<Order<*>>()
+    val goOn = mutableListOf<Order<*>>()
 
     fun addGoOn(o: Order<*>) {
         o.setTimer(o.getDefaultTime())
@@ -369,7 +402,7 @@ class ChoiceInventory(p: Player, val plugin: King) {
         gui.addGUIObject(
             GUIObject(
                 NaturalNumber(4), NaturalNumber(1),
-                EasyItemBuilder.genItem(Material.CHEST, "来い!")
+                EasyItemBuilder.genItem(Material.CHEST, "行け!")
             ).addCallBack(::come)
         )
 
@@ -426,7 +459,7 @@ class ChoiceInventory(p: Player, val plugin: King) {
     }
 
     fun come(e: InventoryClickEvent) {
-        val dim_gui = ChestGUI(e.whoClicked as Player, NaturalNumber(3), "来させる場所選択")
+        val dim_gui = ChestGUI(e.whoClicked as Player, NaturalNumber(3), "行かせる場所選択")
         (e.whoClicked as Player).closeInventory()
         dim_gui.addGUIObject(
             GUIObject(

@@ -1,17 +1,17 @@
 Orders:
   Dig:
-    Time: 400
+    Time: 1200
   Move:
-    Time: 400
+    Time: 200
   NoDeath:
-    Time: 400
+    Time: 2400
   Come:
-    Time: 400
+    Time: 2400
   PlaceChooseYou:
-    Time: 400
+    Time: 1200
   Kill:
     Time: 400
   Got:
-    Time: 400
+    Time: 2400
   Knock:
-    Time: 400
+    Time: 1800
