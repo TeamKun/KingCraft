@@ -1,5 +1,6 @@
 package com.bun133.king
 
+import org.bukkit.Bukkit
 import org.bukkit.GameMode
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
@@ -89,13 +90,23 @@ class Observer : Listener {
         }
     }
 
-    var craft:ActionStore<InventoryClickEvent> = ActionStore(store_size)
+    var craft:ActionStore<CraftItemEvent> = ActionStore(store_size)
+
+//    @EventHandler
+//    fun onCraft(e:InventoryClickEvent){
+//        if(!King.isGoingOn) return
+//        if(e.whoClicked is Player && isJoined(e.whoClicked as Player)){
+//            if(e.slotType === InventoryType.SlotType.RESULT){
+//                craft.add(e)
+//            }
+//        }
+//    }
 
     @EventHandler
-    fun onCraft(e:InventoryClickEvent){
+    fun onCraft(e:CraftItemEvent){
         if(!King.isGoingOn) return
-        if(e.whoClicked is Player && isJoined(e.whoClicked as Player)){
-            if(e.slotType === InventoryType.SlotType.RESULT){
+        if(e.whoClicked is Player){
+            if(isJoined(e.whoClicked as Player)){
                 craft.add(e)
             }
         }

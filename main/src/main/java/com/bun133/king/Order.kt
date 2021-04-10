@@ -465,12 +465,12 @@ class AbstractOrders {
 
             Observer.instance.craft.actions
                 .forEach {
-                    c[it.whoClicked as Player]!!.add(it.cursor!!)
+                    c[it.whoClicked as Player]!!.add(it.recipe.result)
                 }
 
-            Observer.instance.inventoryMove.actions.forEach {
-                c[it.destination.holder as Player]!!.add(it.item)
-            }
+//            Observer.instance.inventoryMove.actions.forEach {
+//                c[it.destination.holder as Player]!!.add(it.item)
+//            }
 //            Bukkit.getOnlinePlayers()
 //                .filter { Observer.isJoined(it) }
 //                .forEach {
