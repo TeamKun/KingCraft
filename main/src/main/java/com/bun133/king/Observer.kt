@@ -9,9 +9,14 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent
 import org.bukkit.event.entity.EntityDeathEvent
 import org.bukkit.event.entity.EntityPickupItemEvent
 import org.bukkit.event.entity.PlayerDeathEvent
+import org.bukkit.event.inventory.CraftItemEvent
+import org.bukkit.event.inventory.InventoryClickEvent
+import org.bukkit.event.inventory.InventoryMoveItemEvent
+import org.bukkit.event.inventory.InventoryType
 import org.bukkit.event.player.PlayerMoveEvent
 import org.bukkit.event.player.PlayerPickupItemEvent
 import org.bukkit.inventory.ItemStack
+import org.bukkit.inventory.PlayerInventory
 
 class Observer : Listener {
     companion object {
@@ -81,6 +86,32 @@ class Observer : Listener {
         if(!King.isGoingOn) return
         if(e.damager is Player && e.entity is Player && isJoined(e.damager as Player) && isJoined(e.entity as Player)){
             knock.add(e)
+        }
+    }
+
+    var craft:ActionStore<InventoryClickEvent> = ActionStore(store_size)
+
+    @EventHandler
+    fun onCraft(e:InventoryClickEvent){
+        if(!King.isGoingOn) return
+        if(e.whoClicked is Player && isJoined(e.whoClicked as Player)){
+            if(e.slotType === InventoryType.SlotType.RESULT){
+                craft.add(e)
+            }
+        }
+    }
+
+    var inventoryMove:ActionStore<InventoryMoveItemEvent> = ActionStore(store_size * 2)
+
+    @EventHandler
+    fun onInventoryMove(e:InventoryMoveItemEvent){
+        if(!King.isGoingOn) return
+        if(e.destination is PlayerInventory){
+            if(e.destination.holder is Player){
+                if(isJoined(e.destination.holder as Player)){
+                    inventoryMove.add(e)
+                }
+            }
         }
     }
 

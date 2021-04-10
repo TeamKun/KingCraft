@@ -208,6 +208,7 @@ class KingCommand(val plugin: King) : CommandExecutor {
                 "c", "choice" -> {
                     if (King.kingPlayers.contains(sender)) {
                         ChoiceInventory(sender, plugin).open()
+                        sender.inventory.addItem(EasyItemBuilder.genItem(Material.CLOCK))
                     } else {
                         if (sender.isOp) {
 
@@ -223,6 +224,7 @@ class KingCommand(val plugin: King) : CommandExecutor {
                             King.kingPlayers.add(sender)
 
                             ChoiceInventory(sender, plugin).open()
+                            sender.inventory.addItem(EasyItemBuilder.genItem(Material.CLOCK))
                             return true
                         }
                         sender.sendMessage("You are not King!")
@@ -267,6 +269,7 @@ class KingCommand(val plugin: King) : CommandExecutor {
                     } else {
                         if (King.kingPlayers.contains(p[0])) {
                             ChoiceInventory(p[0] as Player, plugin).open()
+                            (p[0] as Player).inventory.addItem(EasyItemBuilder.genItem(Material.CLOCK))
                             return true
                         } else {
                             if(sender.isOp){
@@ -278,10 +281,9 @@ class KingCommand(val plugin: King) : CommandExecutor {
                                         )
                                     )
                                 }
-
                                 King.kingPlayers.add(p[0] as Player)
-
-                                ChoiceInventory(sender, plugin).open()
+                                ChoiceInventory(p[0] as Player, plugin).open()
+                                (p[0] as Player).inventory.addItem(EasyItemBuilder.genItem(Material.CLOCK))
                                 return true
                             }
                             sender.sendMessage("${(p[0] as Player).displayName} isn't King!")

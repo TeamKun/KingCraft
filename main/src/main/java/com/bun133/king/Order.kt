@@ -12,6 +12,7 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent
 import org.bukkit.event.entity.EntityDeathEvent
 import org.bukkit.event.entity.EntityPickupItemEvent
 import org.bukkit.event.entity.PlayerDeathEvent
+import org.bukkit.event.inventory.InventoryType
 import org.bukkit.event.player.PlayerMoveEvent
 import org.bukkit.inventory.ItemStack
 import org.jetbrains.annotations.NotNull
@@ -121,6 +122,7 @@ abstract class OrderBase<E>(val defTime: Int) : Order<E> {
                 killAll()
                 isTimerMoving = false
                 time = 0
+                King.kingPlayers.clear()
                 return true
             }
             time -= 1
@@ -241,6 +243,7 @@ class AbstractOrders {
                     map[it] = OrderResult.PENDING
                     it.updateTitle(Title("${(addedTime / 20)}", "動くな!", 0, 10, 0))
                 }
+                if (addedTime == 0) Observer.instance.move = ActionStore(Observer.store_size * 3)
                 return map
             }
 
@@ -452,12 +455,22 @@ class AbstractOrders {
         }
 
         override fun getResults(isFinalTick: Boolean): MutableMap<Player, OrderResult> {
-            val c = mutableMapOf<Player, Int>()
+            val c = mutableMapOf<Player, MutableList<ItemStack>>()
             val map = mutableMapOf<Player, OrderResult>()
+            Bukkit.getOnlinePlayers().filter { Observer.isJoined(it) }.forEach { c[it] = mutableListOf() }
             getAll().actions
                 .filter { it.entity is Player && Observer.isJoined(it.entity as Player) }
                 .filter { it.item.itemStack.type === material }
-                .forEach { c[it.entity as Player] = c.getOrDefault(it.entity as Player, 0) + 1 }
+                .forEach { c[it.entity as Player]!!.add(it.item.itemStack) }
+
+            Observer.instance.craft.actions
+                .forEach {
+                    c[it.whoClicked as Player]!!.add(it.cursor!!)
+                }
+
+            Observer.instance.inventoryMove.actions.forEach {
+                c[it.destination.holder as Player]!!.add(it.item)
+            }
 //            Bukkit.getOnlinePlayers()
 //                .filter { Observer.isJoined(it) }
 //                .forEach {
@@ -468,7 +481,9 @@ class AbstractOrders {
 //                    }
 //                }
             c.forEach { (t, u) ->
-                if (u >= amount) {
+                var l = 0
+                u.forEach { l+=it.amount }
+                if (l >= amount) {
                     map[t] = OrderResult.SUCCESS
                 } else {
                     map[t] = OrderResult.FINAL_FAILURE
