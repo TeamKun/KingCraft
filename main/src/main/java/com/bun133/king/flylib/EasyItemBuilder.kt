@@ -29,5 +29,13 @@ class EasyItemBuilder {
             i.itemMeta = meta
             return i
         }
+
+        fun genItem(material:Material,stack:Int,name:String):ItemStack{
+            val i = ItemStack(material,stack)
+            val meta = i.itemMeta
+            meta.setDisplayName(name)
+            i.itemMeta = meta
+            return i
+        }
     }
 }

@@ -3,11 +3,14 @@ package com.bun133.king
 import com.bun133.king.flylib.Events
 import com.bun133.king.flylib.displayName
 import com.destroystokyo.paper.Title
+import com.destroystokyo.paper.event.player.PlayerAttackEntityCooldownResetEvent
 import org.bukkit.*
 import org.bukkit.entity.EntityType
 import org.bukkit.entity.Player
 import org.bukkit.event.Event
+import org.bukkit.event.entity.EntityDamageByEntityEvent
 import org.bukkit.event.entity.EntityDeathEvent
+import org.bukkit.event.entity.EntityPickupItemEvent
 import org.bukkit.event.entity.PlayerDeathEvent
 import org.bukkit.event.player.PlayerMoveEvent
 import org.bukkit.inventory.ItemStack
@@ -178,7 +181,13 @@ class AbstractOrders {
      * 指定されたブロック掘るやつ
      */
     class Dig(var material: Material, var amount: Int, defTime: Int) : OrderBase<Pair<Player, ItemStack>>(defTime) {
-        override fun getDisplayName(): String = "${King.plugin!!.langModule!!.getLangList()[0].get(King.plugin!!.langModule!!.plugin,material)}を${amount}個掘れ!"
+        override fun getDisplayName(): String = "${
+            King.plugin!!.langModule!!.getLangList()[0].get(
+                King.plugin!!.langModule!!.plugin,
+                material
+            )
+        }を${amount}個掘れ!"
+
         override fun onStart() {
             Observer.instance.dig = ActionStore(Observer.store_size)
         }
@@ -225,11 +234,11 @@ class AbstractOrders {
 
         override fun getResults(isFinalTick: Boolean): MutableMap<Player, OrderResult> {
             addedTime--
-            if(addedTime > 0){
-                val map = mutableMapOf<Player,OrderResult>()
+            if (addedTime > 0) {
+                val map = mutableMapOf<Player, OrderResult>()
                 Bukkit.getOnlinePlayers().filter { Observer.isJoined(it) }.forEach {
                     map[it] = OrderResult.PENDING
-                    it.updateTitle(Title("${(addedTime/20)}","動くな!",0,10,0))
+                    it.updateTitle(Title("${(addedTime / 20)}", "動くな!", 0, 10, 0))
                 }
                 return map
             }
@@ -237,8 +246,8 @@ class AbstractOrders {
             getAll().actions
                 .filter {
                     !(it.from.x == it.to.x &&
-                    it.from.y == it.to.y &&
-                    it.from.z == it.to.z)
+                            it.from.y == it.to.y &&
+                            it.from.z == it.to.z)
                 }
                 .map {
                     it.player
@@ -345,7 +354,9 @@ class AbstractOrders {
     class PlaceChooseYou(val material: Material, defTime: Int) : OrderBase<PlayerMoveEvent>(defTime) {
         private val blockList = mutableMapOf<Player, Boolean>()
         override fun getAll(): ActionStore<PlayerMoveEvent> = Observer.instance.move
-        override fun getDisplayName(): String = "${King.plugin!!.langModule!!.getLangList()[0].get(King.plugin!!.langModule!!.plugin,material)}に乗れ"
+        override fun getDisplayName(): String =
+            "${King.plugin!!.langModule!!.getLangList()[0].get(King.plugin!!.langModule!!.plugin, material)}に乗れ"
+
         override fun onStart() {
             Observer.instance.move = ActionStore(Observer.store_size * 3)
         }
@@ -383,7 +394,13 @@ class AbstractOrders {
 
     class Kill(val entityType: EntityType, val amount: Int, defTime: Int) : OrderBase<EntityDeathEvent>(defTime) {
         override fun getAll(): ActionStore<EntityDeathEvent> = Observer.instance.kill
-        override fun getDisplayName(): String = "${King.plugin!!.langModule!!.getLangList()[0].get(King.plugin!!.langModule!!.plugin,entityType)}を${amount}体殺せ!"
+        override fun getDisplayName(): String = "${
+            King.plugin!!.langModule!!.getLangList()[0].get(
+                King.plugin!!.langModule!!.plugin,
+                entityType
+            )
+        }を${amount}体殺せ!"
+
         override fun onStart() {
             Observer.instance.kill = ActionStore(Observer.store_size * 2)
         }
@@ -394,20 +411,87 @@ class AbstractOrders {
             Bukkit.getOnlinePlayers().filter { Observer.isJoined(it) }.forEach { list[it] = OrderResult.FINAL_FAILURE }
             getAll().actions.forEach {
                 if (it.entityType === entityType) {
-                    if(!count.containsKey(it.entity.killer!!)) count[it.entity.killer!!] = 0
+                    if (!count.containsKey(it.entity.killer!!)) count[it.entity.killer!!] = 0
                     count[it.entity.killer!!] = count[it.entity.killer!!]!! + 1
                 }
             }
 
             count.forEach { (player, c) ->
-                if(c>=amount){
+                if (c >= amount) {
                     list[player] = OrderResult.SUCCESS
-                }else{
+                } else {
                     list[player] = OrderResult.FINAL_FAILURE
                 }
             }
 
             return list
+        }
+    }
+
+    /**
+     * 指定アイテム(ブロック以外)をインベントリの中に持っていればクリア
+     */
+    class Got(val material: Material, val amount: Int, defTime: Int) : OrderBase<EntityPickupItemEvent>(defTime) {
+        override fun getAll(): ActionStore<EntityPickupItemEvent> = Observer.instance.itemPick
+        override fun getDisplayName(): String = "${
+            King.plugin!!.langModule!!.getLangList()[0].get(
+                King.plugin!!.langModule!!.plugin,
+                material
+            )
+        }を${amount}個ゲットしろ!"
+        override fun onStart() {
+            Observer.instance.itemPick = ActionStore(Observer.store_size * 2)
+        }
+
+        override fun getResults(isFinalTick: Boolean): MutableMap<Player, OrderResult> {
+            val c = mutableMapOf<Player, Int>()
+            val map = mutableMapOf<Player, OrderResult>()
+            getAll().actions
+                .filter { it.entity is Player && Observer.isJoined(it.entity as Player) }
+                .filter { it.item.itemStack.type === material }
+                .forEach { c[it.entity as Player] = c.getOrDefault(it.entity as Player, 0) + 1 }
+//            Bukkit.getOnlinePlayers()
+//                .filter { Observer.isJoined(it) }
+//                .forEach {
+//                    if(it.inventory.contains(material,amount)){
+//                        map[it] = OrderResult.SUCCESS
+//                    }else{
+//                        map[it] = OrderResult.FINAL_FAILURE
+//                    }
+//                }
+            c.forEach { (t, u) ->
+                if (u >= amount) {
+                    map[t] = OrderResult.SUCCESS
+                } else {
+                    map[t] = OrderResult.FINAL_FAILURE
+                }
+            }
+            return map
+        }
+    }
+
+    /**
+     * 特定の人を殴らせる
+     */
+    class Knock(val p: Player, defTime: Int) : OrderBase<EntityDamageByEntityEvent>(defTime) {
+        override fun getAll(): ActionStore<EntityDamageByEntityEvent> = Observer.instance.knock
+        override fun getDisplayName(): String = "${p.displayName}を殴れ!"
+        override fun onStart() {
+            Observer.instance.knock = ActionStore(Observer.store_size * 2)
+        }
+
+        override fun getResults(isFinalTick: Boolean): MutableMap<Player, OrderResult> {
+            val map = mutableMapOf<Player, OrderResult>()
+            Bukkit.getOnlinePlayers()
+                .filter { Observer.isJoined(it) }
+                .forEach { map[it] = OrderResult.FINAL_FAILURE }
+            getAll().actions.forEach {
+                if (it.entity as Player === p) {
+                    map[it.damager as Player] = OrderResult.SUCCESS
+                }
+            }
+
+            return map
         }
     }
 }

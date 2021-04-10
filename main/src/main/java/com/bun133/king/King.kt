@@ -17,7 +17,9 @@ import org.bukkit.entity.EntityType
 import org.bukkit.entity.Player
 import org.bukkit.event.inventory.InventoryClickEvent
 import org.bukkit.inventory.ItemStack
+import org.bukkit.inventory.meta.SkullMeta
 import org.bukkit.inventory.meta.SpawnEggMeta
+import org.jetbrains.annotations.Nullable
 
 class King : FlyModulePlugin() {
     companion object {
@@ -141,6 +143,8 @@ class KingConfig(plugin: King) {
     val comeTime = plugin.config.getInt("Orders.Come.Time")
     val placeChooseTime = plugin.config.getInt("Orders.PlaceChooseYou.Time")
     val killTime = plugin.config.getInt("Orders.Kill.Time")
+    val gotTime = plugin.config.getInt("Orders.Got.Time")
+    val knockTime = plugin.config.getInt("Orders.Knock.Time")
 }
 
 class KingCommand(val plugin: King) : CommandExecutor {
@@ -375,6 +379,20 @@ class ChoiceInventory(p: Player, val plugin: King) {
                 EasyItemBuilder.genItem(Material.CHEST, "乗れ!")
             ).addCallBack(::choosePlace)
         )
+
+        gui.addGUIObject(
+            GUIObject(
+                NaturalNumber(6), NaturalNumber(1),
+                EasyItemBuilder.genItem(Material.CHEST, "ゲットしろ!")
+            ).addCallBack(::got)
+        )
+
+        gui.addGUIObject(
+            GUIObject(
+                NaturalNumber(7), NaturalNumber(1),
+                EasyItemBuilder.genItem(Material.CHEST, "殴れ!")
+            ).addCallBack(::knock)
+        )
     }
 
     fun open() {
@@ -383,7 +401,11 @@ class ChoiceInventory(p: Player, val plugin: King) {
 
     fun dig(e: InventoryClickEvent) {
 //        val dig_gui = DropChestGUI("掘らせるブロック選択", e.whoClicked as Player)
-        val dig_gui = ChestGUICollections.gen((e.whoClicked as Player), { EasyItemBuilder.genItem(it).type.isOccluding }, "掘らせるブロック選択")
+        val dig_gui = ChestGUICollections.genMaterial(
+            (e.whoClicked as Player),
+            { EasyItemBuilder.genItem(it).type.isOccluding },
+            "掘らせるブロック選択"
+        )
         (e.whoClicked as Player).closeInventory()
         dig_gui.callbacks.add { page, stack -> (e.whoClicked as Player).closeInventory();chooseDig(stack) }
         dig_gui.open()
@@ -463,7 +485,11 @@ class ChoiceInventory(p: Player, val plugin: King) {
 //        (e.whoClicked as Player).closeInventory()
 //        place_gui.register(::placeChooseYou).open()
 
-        val place_gui = ChestGUICollections.gen(e.whoClicked as Player, { EasyItemBuilder.genItem(it).type.isOccluding }, "乗らせるブロック選択")
+        val place_gui = ChestGUICollections.genMaterial(
+            e.whoClicked as Player,
+            { EasyItemBuilder.genItem(it).type.isOccluding },
+            "乗らせるブロック選択"
+        )
         (e.whoClicked as Player).closeInventory()
         place_gui.callbacks.add { page, stack -> (e.whoClicked as Player).closeInventory();placeChooseYou(stack) }
         place_gui.open()
@@ -476,15 +502,25 @@ class ChoiceInventory(p: Player, val plugin: King) {
     fun kill(e: InventoryClickEvent) {
 //        val egg_gui = DropChestGUI("殺させるMOB選択(卵をいれる)", e.whoClicked as Player)
         (e.whoClicked as Player).closeInventory()
-        val egg_gui = ChestGUICollections.gen((e.whoClicked as Player),{isEgg(EasyItemBuilder.genItem(it))},"殺させるMOB選択")
-        egg_gui.callbacks.add{page,stack -> (e.whoClicked as Player).closeInventory();addKill(stack)}
+        val egg_gui = ChestGUICollections.genMaterial(
+            (e.whoClicked as Player),
+            { isEgg(EasyItemBuilder.genItem(it)) },
+            "殺させるMOB選択"
+        )
+        egg_gui.callbacks.add { page, stack -> (e.whoClicked as Player).closeInventory();addKill(stack) }
         egg_gui.open()
     }
 
     fun addKill(stack: ItemStack) {
-        if(isEgg(stack)){
-            if(getEntityType(stack) != null){
-                King.king!!.addGoOn(AbstractOrders.Kill(getEntityType(stack)!!, stack.amount, plugin.configManager.killTime))
+        if (isEgg(stack)) {
+            if (getEntityType(stack) != null) {
+                King.king!!.addGoOn(
+                    AbstractOrders.Kill(
+                        getEntityType(stack)!!,
+                        stack.amount,
+                        plugin.configManager.killTime
+                    )
+                )
             }
         }
 //        stack
@@ -494,41 +530,37 @@ class ChoiceInventory(p: Player, val plugin: King) {
 //            .forEach { King.king!!.addGoOn(AbstractOrders.Kill(it.second!!, it.first, plugin.configManager.killTime)) }
     }
 
+    fun got(e: InventoryClickEvent) {
+        (e.whoClicked as Player).closeInventory()
+        val got_gui = ChestGUICollections.genMaterial((e.whoClicked as Player), { it.isItem }, "とらせるもの選択")
+        got_gui.callbacks.add { page, stack -> (e.whoClicked as Player).closeInventory();addGot(stack) }
+        got_gui.open()
+    }
+
+    fun addGot(stack: ItemStack) {
+        King.king!!.addGoOn(AbstractOrders.Got(stack.type, stack.amount, plugin.configManager.gotTime))
+    }
+
+    fun knock(e: InventoryClickEvent) {
+        (e.whoClicked as Player).closeInventory()
+        val knock_gui = ChestGUICollections.genPlayerHead((e.whoClicked as Player), { Observer.isJoined(it) }, "殴らせる人")
+        knock_gui.addCallBack { page, stack -> (e.whoClicked as Player).closeInventory(); addKnock((stack.itemMeta as SkullMeta).owningPlayer!!.player) }
+        knock_gui.open()
+    }
+
+    fun addKnock(p: Player?) {
+        if (p == null) {
+            println("[King][Knock] The Player IS ALREADY OFFLINE!!!!")
+            return
+        }
+        King.king!!.addGoOn(AbstractOrders.Knock(p, plugin.configManager.knockTime))
+    }
+
     fun isEgg(stack: ItemStack): Boolean {
         return stack.itemMeta is SpawnEggMeta
     }
 
     fun getEntityType(stack: ItemStack): EntityType? {
-//        when(stack.type){
-//            Material.BEE_SPAWN_EGG -> EntityType.BEE
-//            Material.BLAZE_SPAWN_EGG -> EntityType.BLAZE
-//            Material.CAVE_SPIDER_SPAWN_EGG -> EntityType.CAVE_SPIDER
-//            Material.CREEPER_SPAWN_EGG -> EntityType.CREEPER
-//            Material.DOLPHIN_SPAWN_EGG -> EntityType.DOLPHIN
-//            Material.DROWNED_SPAWN_EGG -> EntityType.DROWNED
-//            Material.ELDER_GUARDIAN_SPAWN_EGG -> EntityType.ELDER_GUARDIAN
-//            Material.ENDERMAN_SPAWN_EGG -> EntityType.ENDERMAN
-//            Material.ENDERMITE_SPAWN_EGG -> EntityType.ENDERMITE
-//            Material.EVOKER_SPAWN_EGG -> EntityType.EVOKER
-//            Material.FOX_SPAWN_EGG -> EntityType.FOX
-//            Material.GHAST_SPAWN_EGG -> EntityType.GHAST
-//            Material.GUARDIAN_SPAWN_EGG -> EntityType.GUARDIAN
-//            Material.HUSK_SPAWN_EGG -> EntityType.HUSK
-//            Material.LLAMA_SPAWN_EGG -> EntityType.LLAMA
-//            Material.MAGMA_CUBE_SPAWN_EGG -> EntityType.MAGMA_CUBE
-//            Material.PANDA_SPAWN_EGG -> EntityType.PANDA
-//            Material.PHANTOM_SPAWN_EGG -> EntityType.PHANTOM
-//            Material.PILLAGER_SPAWN_EGG -> EntityType.PILLAGER
-//            Material.POLAR_BEAR_SPAWN_EGG -> EntityType.POLAR_BEAR
-//            Material.MOOSHROOM_SPAWN_EGG -> EntityType.RAVAGER
-//
-//
-//            Material.BAT_SPAWN_EGG -> EntityType.BAT
-//            Material.CAT_SPAWN_EGG -> EntityType.CAT
-//            Material.CHICKEN_SPAWN_EGG -> EntityType.CHICKEN
-//            Material.DONKEY_SPAWN_EGG -> EntityType.DONKEY
-//        }
-
         val mob_name = stack.type.name.replace("_SPAWN_EGG", "").toLowerCase()
         val entityType = EntityType.fromName(mob_name)
         return entityType

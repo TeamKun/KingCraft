@@ -5,9 +5,12 @@ import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.block.BlockBreakEvent
+import org.bukkit.event.entity.EntityDamageByEntityEvent
 import org.bukkit.event.entity.EntityDeathEvent
+import org.bukkit.event.entity.EntityPickupItemEvent
 import org.bukkit.event.entity.PlayerDeathEvent
 import org.bukkit.event.player.PlayerMoveEvent
+import org.bukkit.event.player.PlayerPickupItemEvent
 import org.bukkit.inventory.ItemStack
 
 class Observer : Listener {
@@ -56,6 +59,28 @@ class Observer : Listener {
             if (isJoined(e.entity.killer!!)) {
                 kill.add(e)
             }
+        }
+    }
+
+    var itemPick:ActionStore<EntityPickupItemEvent> = ActionStore(store_size * 2)
+
+    @EventHandler
+    fun onPickUp(e: EntityPickupItemEvent){
+        if(!King.isGoingOn) return
+        if(e.entity is Player){
+            if(isJoined(e.entity as Player)){
+                itemPick.add(e)
+            }
+        }
+    }
+
+    var knock:ActionStore<EntityDamageByEntityEvent> = ActionStore(store_size * 2)
+
+    @EventHandler
+    fun onKnock(e:EntityDamageByEntityEvent){
+        if(!King.isGoingOn) return
+        if(e.damager is Player && e.entity is Player && isJoined(e.damager as Player) && isJoined(e.entity as Player)){
+            knock.add(e)
         }
     }
 

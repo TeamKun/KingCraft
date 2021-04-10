@@ -11,3 +11,7 @@ Orders:
     Time: 400
   Kill:
     Time: 400
+  Got:
+    Time: 400
+  Knock:
+    Time: 400

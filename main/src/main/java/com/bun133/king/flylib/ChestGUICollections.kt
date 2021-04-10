@@ -1,10 +1,13 @@
 package com.bun133.king.flylib
 
 import com.flylib.util.NaturalNumber
+import org.bukkit.Bukkit
 import org.bukkit.Material
 import org.bukkit.entity.Player
 import org.bukkit.event.inventory.InventoryClickEvent
 import org.bukkit.inventory.ItemStack
+import org.bukkit.inventory.meta.SkullMeta
+
 
 class ChestGUICollections {
     /**
@@ -14,7 +17,7 @@ class ChestGUICollections {
      * @param col Chest Size(Containing UI Col)
      */
     companion object {
-        fun gen(
+        fun genMaterial(
             p: Player,
             filter: (Material) -> Boolean,
             name: String,
@@ -23,15 +26,40 @@ class ChestGUICollections {
             val gui = PagedChestGUI(p, col, name)
             val items = Material.values().filter(filter)
             println("Matched Material:${items.size}")
+            return addAll(gui, items)
+        }
 
+        fun genPlayerHead(
+            p: Player,
+            filter: (Player) -> Boolean,
+            name: String,
+            col: NaturalNumber = NaturalNumber(4)
+        ): PagedChestGUI {
+            val gui = PagedChestGUI(p, col, name)
+            val players = Bukkit.getOnlinePlayers().filter(filter)
+            val skulls = players.map {
+                val skull = EasyItemBuilder.genItem(Material.PLAYER_HEAD, it.displayName)
+                val meta = skull.itemMeta as SkullMeta
+                meta.owningPlayer = it
+                meta.setDisplayName(it.displayName)
+                skull.itemMeta = meta
+                skull
+            }
+            return addAllItemStack(gui, skulls)
+        }
 
+        fun addAll(gui: PagedChestGUI, co: Collection<Material>): PagedChestGUI {
+            return addAllItemStack(gui, co.map { EasyItemBuilder.genItem(it) })
+        }
+
+        fun addAllItemStack(gui: PagedChestGUI, stacks: Collection<ItemStack>): PagedChestGUI {
             var pointer = Pair(1, 1)
             var currentPage = gui.newPage()
             var processed = 0
-            items.forEach {
+            stacks.forEach {
                 currentPage.set(
                     NaturalNumber(pointer.first), NaturalNumber(pointer.second),
-                    GUIObject(NaturalNumber(pointer.first), NaturalNumber(pointer.second), EasyItemBuilder.genItem(it))
+                    GUIObject(NaturalNumber(pointer.first), NaturalNumber(pointer.second), it)
                 )
 
                 pointer = Pair(pointer.first + 1, pointer.second)
@@ -39,7 +67,7 @@ class ChestGUICollections {
                     // 行またぎ
                     pointer = Pair(1, pointer.second + 1)
                 }
-                if (pointer.second > col.i) {
+                if (pointer.second > gui.col.i) {
                     //ページまたぎ
                     pointer = Pair(pointer.first, 1)
                     currentPage = gui.newPage()
@@ -67,7 +95,7 @@ class PagedChestGUI(val p: Player, val col: NaturalNumber, val name: String) {
      */
     fun nextPage() {
         nowPage++
-        if(nowPage > pages.lastIndex) nowPage = 0
+        if (nowPage > pages.lastIndex) nowPage = 0
         drawPage(nowPage)
     }
 
@@ -102,7 +130,7 @@ class PagedChestGUI(val p: Player, val col: NaturalNumber, val name: String) {
      */
     private fun drawPage(nowPage: Int) {
         clear()
-        if(pages.lastIndex < nowPage || nowPage < 0){
+        if (pages.lastIndex < nowPage || nowPage < 0) {
             println("Page Not Found!")
             return
         }
@@ -141,17 +169,17 @@ class PagedChestGUI(val p: Player, val col: NaturalNumber, val name: String) {
 
     // Internal Methods For UI
 
-    private fun cPrev(e:InventoryClickEvent){
+    private fun cPrev(e: InventoryClickEvent) {
         println("前のページへ")
         previousPage()
     }
 
-    private  fun cRef(e:InventoryClickEvent){
+    private fun cRef(e: InventoryClickEvent) {
         println("リフレッシュ")
         drawPage(nowPage)
     }
 
-    private  fun cNext(e:InventoryClickEvent){
+    private fun cNext(e: InventoryClickEvent) {
         println("次のページへ")
         nextPage()
     }
@@ -177,7 +205,7 @@ class PagedChestGUI(val p: Player, val col: NaturalNumber, val name: String) {
      * @param ChestGUIPage -> Opening Page
      * @param ItemStack -> Clicked ItemStack
      */
-    fun addCallBack(f:(ChestGUIPage, ItemStack) -> Unit){
+    fun addCallBack(f: (ChestGUIPage, ItemStack) -> Unit) {
         callbacks.add(f)
     }
 }
@@ -195,15 +223,12 @@ class ChestGUIPage(val col: NaturalNumber) {
      * Copy All ItemStacks to ChestGUI
      */
     fun copyToGUI(chest: ChestGUI) {
-        println("copyToGUI")
-        println("map:${map.size()}")
         map.forEach {
             // どうせUI描画で呼ばれるので
             chest.addGUIObject(
                 GUIObject.deepCopy(it.t),
                 true
             )
-            println("Copied")
         }
     }
 
@@ -239,7 +264,7 @@ class ChestGUIPage(val col: NaturalNumber) {
     /**
      * Register CallBacks
      */
-    fun addCallBack(f:(ChestGUIPage, ItemStack) -> Unit){
+    fun addCallBack(f: (ChestGUIPage, ItemStack) -> Unit) {
         callbacks.add(f)
     }
 }
