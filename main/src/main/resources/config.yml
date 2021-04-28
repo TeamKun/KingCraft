@@ -3,14 +3,14 @@ Orders:
     Time: 1200
   Move:
     Time: 200
-  NoDeath:
+  Kill:
     Time: 2400
   Come:
     Time: 2400
   PlaceChooseYou:
     Time: 1200
-  Kill:
-    Time: 400
+  NoDeath:
+    Time: 2400
   Got:
     Time: 2400
   Knock:
