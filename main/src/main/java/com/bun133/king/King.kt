@@ -15,7 +15,10 @@ import org.bukkit.command.CommandExecutor
 import org.bukkit.command.CommandSender
 import org.bukkit.entity.EntityType
 import org.bukkit.entity.Player
+import org.bukkit.event.EventHandler
+import org.bukkit.event.Listener
 import org.bukkit.event.inventory.InventoryClickEvent
+import org.bukkit.event.inventory.InventoryCloseEvent
 import org.bukkit.inventory.ItemStack
 import org.bukkit.inventory.meta.SkullMeta
 import org.bukkit.inventory.meta.SpawnEggMeta
@@ -230,6 +233,18 @@ class KingCommand(val plugin: King) : CommandExecutor {
                         sender.sendMessage("You are not King!")
                     }
                 }
+                "debug" -> {
+                    println("kingPlayers:")
+                    King.kingPlayers.forEach { println(it.displayName) }
+                    println("Configs:")
+                    println("comeTime:${King.plugin!!.configManager.comeTime}")
+                    println("digTime:${King.plugin!!.configManager.digTime}")
+                    println("killTime:${King.plugin!!.configManager.killTime}")
+                    println("knockTime:${King.plugin!!.configManager.knockTime}")
+                    println("noDeathTime:${King.plugin!!.configManager.noDeathTime}")
+                    println("placeChooseTime:${King.plugin!!.configManager.placeChooseTime}")
+                    println("moveTime:${King.plugin!!.configManager.moveTime}")
+                }
 //                "set" -> {
 //                    if (sender.isOp) {
 //                        if (King.kingPlayers.contains(sender)) {
@@ -356,16 +371,31 @@ class KingCommand(val plugin: King) : CommandExecutor {
     }
 }
 
-class ChoiceInventory(p: Player, val plugin: King) {
+class ChoiceInventory(p: Player, val plugin: King) : Listener{
     init {
         // 自動的に開始されるように
         if (!King.isGoingOn) {
             King.isGoingOn = true
             Bukkit.broadcastMessage("Auto Enabled!")
         }
+
+        plugin.server.pluginManager.registerEvents(this,plugin)
     }
 
+    @EventHandler
+    fun onClose(e:InventoryCloseEvent){
+        if(e.inventory == gui.inventory){
+            if(isChosen){
+                isChosen = false
+                return
+            }
+            println("Removed!")
+            King.kingPlayers.remove(e.player)
+        }
+    }
 
+    // 選んだ時にTrueになる
+    var isChosen = false
     val gui = ChestGUI(p, NaturalNumber(4), "命令一覧")
 
     init {
@@ -441,6 +471,7 @@ class ChoiceInventory(p: Player, val plugin: King) {
             { EasyItemBuilder.genItem(it).type.isOccluding },
             "掘らせるブロック選択"
         )
+        isChosen = true
         (e.whoClicked as Player).closeInventory()
         dig_gui.callbacks.add { page, stack -> (e.whoClicked as Player).closeInventory();chooseDig(stack) }
         dig_gui.open()
@@ -452,16 +483,19 @@ class ChoiceInventory(p: Player, val plugin: King) {
 
     fun move(e: InventoryClickEvent) {
         King.king!!.addGoOn(AbstractOrders.Move(plugin.configManager.moveTime))
+        isChosen = true
         (e.whoClicked as Player).closeInventory()
     }
 
     fun noDeath(e: InventoryClickEvent) {
         King.king!!.addGoOn(AbstractOrders.NotDeath(plugin.configManager.noDeathTime))
+        isChosen = true
         (e.whoClicked as Player).closeInventory()
     }
 
     fun come(e: InventoryClickEvent) {
         val dim_gui = ChestGUI(e.whoClicked as Player, NaturalNumber(3), "行かせる場所選択")
+        isChosen = true
         (e.whoClicked as Player).closeInventory()
         dim_gui.addGUIObject(
             GUIObject(
@@ -525,6 +559,7 @@ class ChoiceInventory(p: Player, val plugin: King) {
             { EasyItemBuilder.genItem(it).type.isOccluding },
             "乗らせるブロック選択"
         )
+        isChosen = true
         (e.whoClicked as Player).closeInventory()
         place_gui.callbacks.add { page, stack -> (e.whoClicked as Player).closeInventory();placeChooseYou(stack) }
         place_gui.open()
@@ -536,6 +571,7 @@ class ChoiceInventory(p: Player, val plugin: King) {
 
     fun kill(e: InventoryClickEvent) {
 //        val egg_gui = DropChestGUI("殺させるMOB選択(卵をいれる)", e.whoClicked as Player)
+        isChosen = true
         (e.whoClicked as Player).closeInventory()
         val egg_gui = ChestGUICollections.genMaterial(
             (e.whoClicked as Player),
@@ -566,6 +602,7 @@ class ChoiceInventory(p: Player, val plugin: King) {
     }
 
     fun got(e: InventoryClickEvent) {
+        isChosen = true
         (e.whoClicked as Player).closeInventory()
         val got_gui = ChestGUICollections.genMaterial((e.whoClicked as Player), { it.isItem }, "とらせるもの選択")
         got_gui.callbacks.add { page, stack -> (e.whoClicked as Player).closeInventory();addGot(stack) }
@@ -577,6 +614,7 @@ class ChoiceInventory(p: Player, val plugin: King) {
     }
 
     fun knock(e: InventoryClickEvent) {
+        isChosen = true
         (e.whoClicked as Player).closeInventory()
         val knock_gui = ChestGUICollections.genPlayerHead((e.whoClicked as Player), { Observer.isJoined(it) }, "殴らせる人")
         knock_gui.addCallBack { page, stack -> (e.whoClicked as Player).closeInventory(); addKnock((stack.itemMeta as SkullMeta).owningPlayer!!.player) }
